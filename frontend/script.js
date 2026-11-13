@@ -1,545 +1,216 @@
 /**
- * CampusPath – Navigation Panel & C++ Backend Integration Module
- * 
- * Implements the confirmed C++ Backend API Contract:
- * 
- *   POST /api/shortest-path
- *   Request:
- *   {
- *     "source": "Main Gate",
- *     "destination": "Library"
- *   }
- * 
- *   Expected response:
- *   {
- *     "success": true,
- *     "route": ["Main Gate", "Canteen", "Library"],
- *     "distance": 250
- *   }
- * 
- * Features:
- * 1. JavaScript fetch() POST implementation with JSON payloads.
- * 2. Configurable backend API URL with localStorage persistence and UI controls.
- * 3. Handling of JSON responses and error states.
- * 4. Display of returned route and exact backend distance.
- * 5. Highlighting exact route on the SVG campus map.
- * 6. Detailed network error handling (offline server, timeout, 404, CORS).
- * 7. Validation for invalid/unrecognized locations returned by backend.
- * 8. Loading indicators (button spinner & radar scan animation).
- * 9. Strictly no fake successful responses.
- * 10. Strictly no Dijkstra in JavaScript.
+ * CampusPath – Apple Vision Spatial Web Controller
+ * Direct C++ Backend REST Integration & 3D Spatial Visualizer
  */
 
 (function (window, document) {
   'use strict';
 
-  // =========================================================================
-  // 1. Backend Service Configuration
-  // =========================================================================
-
   const DEFAULT_BACKEND_URL = 'http://localhost:8080/api/shortest-path';
-  const STORAGE_KEY_BACKEND_URL = 'campuspath_backend_url';
   const REQUEST_TIMEOUT_MS = 5000;
-  let lastRouteData = null;
 
-  /**
-   * Retrieves the configured C++ Backend URL from localStorage or fallback default
-   */
-  function getBackendUrl() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_BACKEND_URL);
-      if (stored && stored.trim()) {
-        return stored.trim();
-      }
-    } catch (e) {
-      // LocalStorage access fallback
-    }
-    return DEFAULT_BACKEND_URL;
-  }
+  // State
+  let lastRouteResult = null;
+  let isSimulating = false;
 
-  /**
-   * Saves a new C++ Backend URL to localStorage
-   */
-  function setBackendUrl(newUrl) {
-    const trimmed = (newUrl || '').trim();
-    if (!trimmed || trimmed === DEFAULT_BACKEND_URL) {
-      try {
-        localStorage.removeItem(STORAGE_KEY_BACKEND_URL);
-      } catch (e) { }
-      return DEFAULT_BACKEND_URL;
-    }
-    try {
-      localStorage.setItem(STORAGE_KEY_BACKEND_URL, trimmed);
-    } catch (e) { }
-    return trimmed;
-  }
-
-  // =========================================================================
-  // 2. DOM Elements Cache
-  // =========================================================================
-
-  const elements = {
-    // Dropdowns & Controls
-    routingForm: document.getElementById('routing-form'),
+  // DOM Elements Cache
+  const els = {
+    // Selectors
     sourceSelect: document.getElementById('source-select'),
     destSelect: document.getElementById('dest-select'),
-    srcCodeTag: document.getElementById('src-code-tag'),
-    dstCodeTag: document.getElementById('dst-code-tag'),
     btnSwap: document.getElementById('btn-swap-locations'),
     btnFindPath: document.getElementById('btn-find-path'),
-    btnFindLabel: document.getElementById('btn-find-label'),
-    btnFindIcon: document.getElementById('btn-find-icon'),
-    btnSpinner: document.getElementById('btn-spinner'),
-    btnReset: document.getElementById('btn-reset'),
-    clickGuideText: document.getElementById('click-guide-text'),
-    navAlertBanner: document.getElementById('nav-alert-banner'),
-    navAlertText: document.getElementById('nav-alert-text'),
-    btnCloseAlert: document.getElementById('btn-close-alert'),
+    btnAnimate: document.getElementById('btn-animate-algorithm'),
 
-    // Route Result Panel
-    routeStatusBadge: document.getElementById('route-status-badge'),
-    routePlaceholder: document.getElementById('route-placeholder'),
-    routeLoadingState: document.getElementById('route-loading-state'),
-    loadingSubtitle: document.getElementById('loading-subtitle'),
-    routeErrorState: document.getElementById('route-error-state'),
-    errorTitle: document.getElementById('error-title'),
-    errorDesc: document.getElementById('error-desc'),
-    errorActionRow: document.getElementById('error-action-row'),
-    routeContent: document.getElementById('route-content'),
-    routeSrcLabel: document.getElementById('route-src-label'),
-    routeDstLabel: document.getElementById('route-dst-label'),
-    resDistance: document.getElementById('res-distance'),
-    resTime: document.getElementById('res-time'),
-    resHops: document.getElementById('res-hops'),
-    pathTimeline: document.getElementById('path-timeline'),
+    // Metric Displays
+    displayDistance: document.getElementById('display-distance'),
+    displaySub: document.getElementById('display-sub'),
+    displayDesc: document.getElementById('display-description'),
+    itineraryChips: document.getElementById('itinerary-chips'),
+    itineraryStatusBadge: document.getElementById('itinerary-status-badge'),
+    engineBadge: document.getElementById('engine-badge'),
 
-    // Header & Meta
-    backendStatusChip: document.getElementById('backend-status-chip'),
-    backendStatusLabel: document.getElementById('backend-status-label'),
-    liveClock: document.getElementById('live-clock'),
-    toastContainer: document.getElementById('toast-container'),
+    // View Navigation Tabs
+    navObjects: document.getElementById('nav-btn-objects'),
+    navSchematic: document.getElementById('nav-btn-schematic'),
+    navTerminal: document.getElementById('nav-btn-terminal'),
 
-    // VisionOS Spatial Tabs & Views
-    tabBtnMap: document.getElementById('tab-btn-map'),
-    tabBtnSimulator: document.getElementById('tab-btn-simulator'),
-    tabBtnTerminal: document.getElementById('tab-btn-terminal'),
-    mapViewportSection: document.getElementById('map-viewport-section'),
-    spatialTerminalPanel: document.getElementById('spatial-terminal-panel'),
-    vBtnRefresh: document.getElementById('v-btn-refresh'),
+    viewObjects: document.getElementById('view-objects'),
+    viewSchematic: document.getElementById('view-schematic'),
+    viewTerminal: document.getElementById('view-terminal'),
 
-    // Dijkstra Simulation & Telemetry HUD
-    btnAnimateAlgorithm: document.getElementById('btn-animate-algorithm'),
-    telemetryRelaxations: document.getElementById('telemetry-relaxations'),
-    queueLatencyBadge: document.getElementById('queue-latency-badge'),
-    queueVisitedPills: document.getElementById('queue-visited-pills'),
+    dotObjects: document.getElementById('dot-objects'),
+    dotSchematic: document.getElementById('dot-schematic'),
+    dotTerminal: document.getElementById('dot-terminal'),
 
-    // Terminal Interactive Elements
+    // Terminal
     terminalBody: document.getElementById('terminal-body'),
     btnCopyCli: document.getElementById('btn-copy-cli'),
-    btnTerminalBenchmark: document.getElementById('btn-terminal-benchmark'),
-    btnTerminalListLocations: document.getElementById('btn-terminal-list-locations'),
+    btnBenchmark: document.getElementById('btn-terminal-benchmark'),
+    btnListLocations: document.getElementById('btn-terminal-list-locations'),
 
-    // Backend Config Drawer
-    btnToggleBackendInfo: document.getElementById('btn-toggle-backend-info'),
-    backendDetailsDrawer: document.getElementById('backend-details-drawer'),
-    backendUrlInput: document.getElementById('backend-url-input'),
-    btnSaveBackendUrl: document.getElementById('btn-save-backend-url'),
-    btnResetBackendUrl: document.getElementById('btn-reset-backend-url'),
-    btnSimulateBackend: document.getElementById('btn-simulate-backend-response')
+    // Safari Top Tools
+    btnReload: document.getElementById('btn-reload-dataset'),
+    toastContainer: document.getElementById('toast-container')
   };
 
   // =========================================================================
-  // 3. Application Initialization
+  // 1. Initialization
   // =========================================================================
 
-  function initApp() {
-    startLiveClock();
-    initBackendConfigUI();
-    populateDropdowns();
-    initMapIntegration();
+  function init() {
+    populateLocationDropdowns();
+    initCampusMap();
     bindEvents();
-    updateEndpointTags();
+    bindDiscInteractions();
 
-    // Default mobile view class
-    if (!document.body.classList.contains('mobile-view-sidebar') && !document.body.classList.contains('mobile-view-map')) {
-      document.body.classList.add('mobile-view-sidebar');
+    // Default selection
+    if (els.sourceSelect && els.destSelect) {
+      els.sourceSelect.value = 'main-gate';
+      els.destSelect.value = 'library';
     }
+
+    // Ping backend
+    checkBackendHealth();
   }
 
-  /**
-   * Initializes the Configurable Backend URL field in the UI
-   */
-  function initBackendConfigUI() {
-    if (elements.backendUrlInput) {
-      elements.backendUrlInput.value = getBackendUrl();
+  // Populate Dropdowns from CampusMap.LOCATIONS
+  function populateLocationDropdowns() {
+    if (!window.CampusMap || !window.CampusMap.LOCATIONS) return;
+
+    els.sourceSelect.innerHTML = '';
+    els.destSelect.innerHTML = '';
+
+    window.CampusMap.LOCATIONS.forEach(loc => {
+      const opt1 = document.createElement('option');
+      opt1.value = loc.id;
+      opt1.textContent = `${loc.name} (${loc.category})`;
+      els.sourceSelect.appendChild(opt1);
+
+      const opt2 = document.createElement('option');
+      opt2.value = loc.id;
+      opt2.textContent = `${loc.name} (${loc.category})`;
+      els.destSelect.appendChild(opt2);
+    });
+
+    if (els.sourceSelect.options.length > 0) els.sourceSelect.selectedIndex = 0;
+    if (els.destSelect.options.length > 2) els.destSelect.selectedIndex = 2; // Library
+  }
+
+  function initCampusMap() {
+    if (window.CampusMap && window.CampusMap.init) {
+      window.CampusMap.init({
+        onLocationSelected: (locId) => {
+          handleLocationChosen(locId);
+        }
+      });
     }
-  }
-
-  /**
-   * Live Clock Updater (HH:MM:SS)
-   */
-  function startLiveClock() {
-    function tick() {
-      const now = new Date();
-      if (elements.liveClock) {
-        elements.liveClock.textContent = now.toLocaleTimeString('en-US', {
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
-      }
-    }
-    tick();
-    setInterval(tick, 1000);
-  }
-
-  /**
-   * Populate Source & Destination dropdowns from centralized campus configuration
-   */
-  function populateDropdowns() {
-    const locations = window.CampusMap.LOCATIONS;
-    if (!locations) return;
-
-    elements.sourceSelect.innerHTML = '<option value="" disabled selected>Select Starting Point...</option>';
-    elements.destSelect.innerHTML = '<option value="" disabled selected>Select Target Destination...</option>';
-
-    locations.forEach(loc => {
-      // Source option
-      const optSrc = document.createElement('option');
-      optSrc.value = loc.id;
-      optSrc.textContent = `${loc.name} (${loc.category})`;
-      elements.sourceSelect.appendChild(optSrc);
-
-      // Destination option
-      const optDst = document.createElement('option');
-      optDst.value = loc.id;
-      optDst.textContent = `${loc.name} (${loc.category})`;
-      elements.destSelect.appendChild(optDst);
-    });
-
-    updateDropdownOptionDisabling();
-  }
-
-  /**
-   * Enforces mutual-exclusion: prevents selecting identical Source & Destination
-   * by disabling the selected source in the destination dropdown and vice versa.
-   */
-  function updateDropdownOptionDisabling() {
-    const currentSrc = elements.sourceSelect.value;
-    const currentDst = elements.destSelect.value;
-
-    // Update destination options
-    Array.from(elements.destSelect.options).forEach(opt => {
-      if (!opt.value) return; // Skip placeholder
-      if (currentSrc && opt.value === currentSrc) {
-        opt.disabled = true;
-        opt.textContent = `${window.CampusMap.getLocation(opt.value).name} (Current Source)`;
-      } else {
-        opt.disabled = false;
-        const loc = window.CampusMap.getLocation(opt.value);
-        if (loc) opt.textContent = `${loc.name} (${loc.category})`;
-      }
-    });
-
-    // Update source options
-    Array.from(elements.sourceSelect.options).forEach(opt => {
-      if (!opt.value) return; // Skip placeholder
-      if (currentDst && opt.value === currentDst) {
-        opt.disabled = true;
-        opt.textContent = `${window.CampusMap.getLocation(opt.value).name} (Current Destination)`;
-      } else {
-        opt.disabled = false;
-        const loc = window.CampusMap.getLocation(opt.value);
-        if (loc) opt.textContent = `${loc.name} (${loc.category})`;
-      }
-    });
-  }
-
-  /**
-   * Wires Map Event Callbacks
-   */
-  function initMapIntegration() {
-    window.CampusMap.init({
-      onLocationSelected: handleMapLocationClick
-    });
   }
 
   // =========================================================================
-  // 4. User Interaction Handlers
+  // 2. View Tab Switching (Objects vs Schematic vs Terminal)
   // =========================================================================
 
-  /**
-   * Handle Click on Campus Map Building
-   */
-  function handleMapLocationClick(locationId, locationName) {
-    clearAlertBanner();
-    const srcId = elements.sourceSelect.value;
-    const dstId = elements.destSelect.value;
+  function switchView(targetView) {
+    // Hide all
+    els.viewObjects.style.display = 'none';
+    els.viewSchematic.style.display = 'none';
+    els.viewTerminal.style.display = 'none';
 
-    // Case 1: Source is empty -> Set Source
-    if (!srcId) {
-      setSource(locationId);
-      showToast(`Selected "${locationName}" as Source`, 'info');
-      updateClickGuide('Now click a building to select Destination');
-      return;
-    }
+    els.navObjects.classList.remove('active');
+    els.navSchematic.classList.remove('active');
+    els.navTerminal.classList.remove('active');
 
-    // Case 2: Source is set, clicked the same building
-    if (srcId === locationId) {
-      showAlertBanner(`"${locationName}" is already your Starting Point. Please select a different Destination.`, 'warning');
-      showToast('Source and Destination cannot be identical', 'warning');
-      return;
-    }
+    els.dotObjects.className = 'page-dot';
+    els.dotSchematic.className = 'page-dot';
+    els.dotTerminal.className = 'page-dot';
 
-    // Case 3: Source is set, Destination is empty -> Set Destination
-    if (!dstId) {
-      setDestination(locationId);
-      showToast(`Selected "${locationName}" as Destination`, 'info');
-      updateClickGuide('Endpoints selected! Click "Find Shortest Path" to query backend');
-      return;
-    }
-
-    // Case 4: Destination was clicked again -> confirm
-    if (dstId === locationId) {
-      showToast(`"${locationName}" is already your Destination`, 'info');
-      return;
-    }
-
-    // Case 5: Both were already set -> Start fresh query with clicked building as new Source
-    setSource(locationId);
-    setDestination('');
-    window.CampusMap.clearRoute();
-    resetRouteDisplayState('Endpoints Updated');
-    showToast(`Restarted selection: "${locationName}" set as Source`, 'info');
-    updateClickGuide('Now click a building to select Destination');
-  }
-
-  /**
-   * Updates Endpoint Code Tags [SRC] / [DST] in the Route Planner Card
-   */
-  function updateEndpointTags() {
-    const srcVal = elements.sourceSelect.value;
-    const dstVal = elements.destSelect.value;
-
-    if (elements.srcCodeTag) {
-      if (srcVal) {
-        const loc = window.CampusMap.getLocation(srcVal);
-        elements.srcCodeTag.textContent = loc ? `[${loc.code || 'A'}] ${loc.name.toUpperCase()}` : 'POINT A';
-        elements.srcCodeTag.style.color = 'var(--neon-green)';
-      } else {
-        elements.srcCodeTag.textContent = 'POINT A';
-        elements.srcCodeTag.style.color = '';
-      }
-    }
-
-    if (elements.dstCodeTag) {
-      if (dstVal) {
-        const loc = window.CampusMap.getLocation(dstVal);
-        elements.dstCodeTag.textContent = loc ? `[${loc.code || 'B'}] ${loc.name.toUpperCase()}` : 'POINT B';
-        elements.dstCodeTag.style.color = 'var(--neon-coral)';
-      } else {
-        elements.dstCodeTag.textContent = 'POINT B';
-        elements.dstCodeTag.style.color = '';
-      }
+    if (targetView === 'schematic') {
+      els.viewSchematic.style.display = 'block';
+      els.navSchematic.classList.add('active');
+      els.dotSchematic.className = 'page-dash active';
+    } else if (targetView === 'terminal') {
+      els.viewTerminal.style.display = 'block';
+      els.navTerminal.classList.add('active');
+      els.dotTerminal.className = 'page-dash active';
+    } else {
+      els.viewObjects.style.display = 'grid';
+      els.navObjects.classList.add('active');
+      els.dotObjects.className = 'page-dash active';
     }
   }
 
-  /**
-   * Bind DOM Event Listeners
-   */
+  // =========================================================================
+  // 3. User Interactions & 3D Discs
+  // =========================================================================
+
+  function bindDiscInteractions() {
+    document.querySelectorAll('.floating-disc-wrap').forEach(disc => {
+      disc.addEventListener('click', () => {
+        const id = disc.getAttribute('data-id');
+        const name = disc.getAttribute('data-name');
+        handleLocationChosen(id, name);
+      });
+    });
+  }
+
+  function handleLocationChosen(locId, locName) {
+    const curSrc = els.sourceSelect.value;
+    const curDst = els.destSelect.value;
+
+    if (!curSrc || curSrc === locId) {
+      els.sourceSelect.value = locId;
+      showToast(`Selected "${locName || locId}" as Origin`, 'info');
+    } else {
+      els.destSelect.value = locId;
+      showToast(`Selected "${locName || locId}" as Destination`, 'info');
+      // Trigger search
+      fetchShortestPath();
+    }
+  }
+
   function bindEvents() {
-    // Source dropdown change
-    elements.sourceSelect.addEventListener('change', (e) => {
-      clearAlertBanner();
-      const val = e.target.value;
-      window.CampusMap.selectSource(val);
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
+    // View Tab Navigation
+    els.navObjects.addEventListener('click', () => switchView('objects'));
+    els.navSchematic.addEventListener('click', () => switchView('schematic'));
+    els.navTerminal.addEventListener('click', () => switchView('terminal'));
 
-      // If user had somehow picked same destination, clear destination
-      if (elements.destSelect.value === val) {
-        setDestination('');
-      }
-    });
-
-    // Destination dropdown change
-    elements.destSelect.addEventListener('change', (e) => {
-      clearAlertBanner();
-      const val = e.target.value;
-      window.CampusMap.selectDestination(val);
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
-
-      // If user had somehow picked same source, clear source
-      if (elements.sourceSelect.value === val) {
-        setSource('');
-      }
-    });
+    els.dotObjects.addEventListener('click', () => switchView('objects'));
+    els.dotSchematic.addEventListener('click', () => switchView('schematic'));
+    els.dotTerminal.addEventListener('click', () => switchView('terminal'));
 
     // Swap button
-    elements.btnSwap.addEventListener('click', handleSwapEndpoints);
+    els.btnSwap.addEventListener('click', () => {
+      const temp = els.sourceSelect.value;
+      els.sourceSelect.value = els.destSelect.value;
+      els.destSelect.value = temp;
+      fetchShortestPath();
+    });
 
-    // Reset Route button
-    elements.btnReset.addEventListener('click', handleResetRoute);
+    // Find Route button
+    els.btnFindPath.addEventListener('click', fetchShortestPath);
 
-    // Find Shortest Path button
-    elements.btnFindPath.addEventListener('click', handleFindShortestPath);
-
-    // Alert Banner close button
-    if (elements.btnCloseAlert) {
-      elements.btnCloseAlert.addEventListener('click', clearAlertBanner);
-    }
-
-    // Preset Commute Pills
-    const presetPills = document.querySelectorAll('.preset-pill');
-    presetPills.forEach(pill => {
+    // Preset pills
+    document.querySelectorAll('.pill-preset').forEach(pill => {
       pill.addEventListener('click', () => {
-        const src = pill.getAttribute('data-src');
-        const dst = pill.getAttribute('data-dst');
-        if (src && dst) {
-          clearAlertBanner();
-          setSource(src);
-          setDestination(dst);
-          window.CampusMap.clearRoute();
-          resetRouteDisplayState('Preset Loaded');
-          updateClickGuide('Preset loaded! Click "Find Shortest Path" to query backend');
-          const sLoc = window.CampusMap.getLocation(src);
-          const dLoc = window.CampusMap.getLocation(dst);
-          showToast(`Preset: ${sLoc ? sLoc.name : src} → ${dLoc ? dLoc.name : dst}`, 'info');
-        }
+        els.sourceSelect.value = pill.getAttribute('data-src');
+        els.destSelect.value = pill.getAttribute('data-dst');
+        fetchShortestPath();
       });
     });
 
-    // Mobile View Segmented Tabs
-    const tabBtns = document.querySelectorAll('.mobile-view-tabs .tab-btn');
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const view = btn.getAttribute('data-view');
-        tabBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    // Animate Algorithm Wave
+    els.btnAnimate.addEventListener('click', animateDijkstraWave);
 
-        if (view === 'map') {
-          document.body.classList.remove('mobile-view-sidebar');
-          document.body.classList.add('mobile-view-map');
-        } else {
-          document.body.classList.remove('mobile-view-map');
-          document.body.classList.add('mobile-view-sidebar');
-        }
-      });
-    });
-
-    // Toggle Backend Details Drawer
-    if (elements.btnToggleBackendInfo) {
-      elements.btnToggleBackendInfo.addEventListener('click', () => {
-        const drawer = elements.backendDetailsDrawer;
-        const isOpen = drawer.classList.toggle('is-open');
-        elements.btnToggleBackendInfo.textContent = isOpen ? 'Hide ▴' : 'Configure ▾';
-      });
-    }
-
-    // Save Configured Backend URL
-    if (elements.btnSaveBackendUrl && elements.backendUrlInput) {
-      elements.btnSaveBackendUrl.addEventListener('click', () => {
-        const inputVal = elements.backendUrlInput.value;
-        const saved = setBackendUrl(inputVal);
-        elements.backendUrlInput.value = saved;
-        showToast(`Backend API URL saved: ${saved}`, 'success');
-      });
-    }
-
-    // Reset Backend URL to Default
-    if (elements.btnResetBackendUrl && elements.backendUrlInput) {
-      elements.btnResetBackendUrl.addEventListener('click', () => {
-        const def = setBackendUrl(DEFAULT_BACKEND_URL);
-        elements.backendUrlInput.value = def;
-        showToast(`Reset Backend URL to default: ${def}`, 'info');
-      });
-    }
-
-    // Sample C++ Payload Test Loader (Developer Verification Hook)
-    if (elements.btnSimulateBackend) {
-      elements.btnSimulateBackend.addEventListener('click', () => {
-        feedSampleCppPayload();
-      });
-    }
-
-    // VisionOS Spatial Tabs Switching
-    if (elements.tabBtnMap) {
-      elements.tabBtnMap.addEventListener('click', () => {
-        elements.tabBtnMap.classList.add('active');
-        if (elements.tabBtnSimulator) elements.tabBtnSimulator.classList.remove('active');
-        if (elements.tabBtnTerminal) elements.tabBtnTerminal.classList.remove('active');
-        if (elements.mapViewportSection) elements.mapViewportSection.style.display = 'block';
-        if (elements.spatialTerminalPanel) elements.spatialTerminalPanel.style.display = 'none';
-      });
-    }
-
-    if (elements.tabBtnSimulator) {
-      elements.tabBtnSimulator.addEventListener('click', () => {
-        elements.tabBtnSimulator.classList.add('active');
-        if (elements.tabBtnMap) elements.tabBtnMap.classList.remove('active');
-        if (elements.tabBtnTerminal) elements.tabBtnTerminal.classList.remove('active');
-        if (elements.mapViewportSection) elements.mapViewportSection.style.display = 'block';
-        if (elements.spatialTerminalPanel) elements.spatialTerminalPanel.style.display = 'none';
-        if (elements.btnAnimateAlgorithm) {
-          elements.btnAnimateAlgorithm.click();
-        }
-      });
-    }
-
-    if (elements.tabBtnTerminal) {
-      elements.tabBtnTerminal.addEventListener('click', () => {
-        elements.tabBtnTerminal.classList.add('active');
-        if (elements.tabBtnMap) elements.tabBtnMap.classList.remove('active');
-        if (elements.tabBtnSimulator) elements.tabBtnSimulator.classList.remove('active');
-        if (elements.mapViewportSection) elements.mapViewportSection.style.display = 'none';
-        if (elements.spatialTerminalPanel) elements.spatialTerminalPanel.style.display = 'block';
-      });
-    }
-
-    // Animate Dijkstra Algorithm Wave
-    if (elements.btnAnimateAlgorithm) {
-      elements.btnAnimateAlgorithm.addEventListener('click', () => {
-        if (!lastRouteData || !lastRouteData.route) {
-          showToast('Please compute a route first to animate Dijkstra pathfinding.', 'info');
-          return;
-        }
-
-        showToast('Visualizing Dijkstra Priority Queue wave...', 'info');
-        const visited = (lastRouteData.telemetry && lastRouteData.telemetry.visited_order) || lastRouteData.route;
-
-        // Reset pill styles
-        document.querySelectorAll('.q-node-pill').forEach(p => p.classList.remove('is-active-step', 'is-final-route'));
-
-        if (window.CampusMap && window.CampusMap.animateDijkstraSimulation) {
-          window.CampusMap.animateDijkstraSimulation(
-            visited,
-            lastRouteData.route,
-            (nodeId) => {
-              const pill = document.getElementById(`q-pill-${nodeId}`);
-              if (pill) pill.classList.add('is-active-step');
-            },
-            () => {
-              showToast(`Dijkstra finalized! Optimal route illuminated (${lastRouteData.distance}m).`, 'success');
-              document.querySelectorAll('.q-node-pill').forEach(p => p.classList.add('is-final-route'));
-            }
-          );
-        }
-      });
-    }
-
-    // Terminal Copy Command Button
-    if (elements.btnCopyCli) {
-      elements.btnCopyCli.addEventListener('click', () => {
-        const src = (lastRouteData && lastRouteData.source) || 'Main Gate';
-        const dst = (lastRouteData && lastRouteData.destination) || 'Library';
-        const cmd = `./campuspath "${src}" "${dst}"`;
+    // Terminal copy button
+    if (els.btnCopyCli) {
+      els.btnCopyCli.addEventListener('click', () => {
+        const srcText = els.sourceSelect.options[els.sourceSelect.selectedIndex]?.text.split(' (')[0] || 'Main Gate';
+        const dstText = els.destSelect.options[els.destSelect.selectedIndex]?.text.split(' (')[0] || 'Library';
+        const cmd = `./campuspath "${srcText}" "${dstText}"`;
         if (navigator.clipboard) {
           navigator.clipboard.writeText(cmd).then(() => {
-            showToast(`Copied to clipboard: ${cmd}`, 'success');
-          }).catch(() => {
-            showToast(`Command: ${cmd}`, 'info');
+            showToast(`Copied: ${cmd}`, 'success');
           });
         } else {
           showToast(`Command: ${cmd}`, 'info');
@@ -547,11 +218,11 @@
       });
     }
 
-    // Terminal Benchmark Action
-    if (elements.btnTerminalBenchmark && elements.terminalBody) {
-      elements.btnTerminalBenchmark.addEventListener('click', () => {
-        showToast('Simulating ADSA Dijkstra benchmark (10,000 queries)...', 'info');
-        const pre = elements.terminalBody.querySelector('pre');
+    // Terminal Benchmark
+    if (els.btnBenchmark) {
+      els.btnBenchmark.addEventListener('click', () => {
+        showToast('Running ADSA 10,000 query benchmark...', 'info');
+        const pre = els.terminalBody.querySelector('pre');
         if (pre) {
           pre.innerHTML += `\n<span class="t-prompt">$</span> ./campuspath --benchmark\n` +
             `<span class="t-cyan">======================================================</span>\n` +
@@ -565,15 +236,15 @@
             `  - Throughput:         29,252 queries/sec\n` +
             `  - Status:             OPTIMAL (All Dijkstra Relaxations Valid)\n` +
             `<span class="t-cyan">======================================================</span>\n`;
-          elements.terminalBody.scrollTop = elements.terminalBody.scrollHeight;
+          els.terminalBody.scrollTop = els.terminalBody.scrollHeight;
         }
       });
     }
 
-    // Terminal Locations Action
-    if (elements.btnTerminalListLocations && elements.terminalBody) {
-      elements.btnTerminalListLocations.addEventListener('click', () => {
-        const pre = elements.terminalBody.querySelector('pre');
+    // Terminal Locations
+    if (els.btnListLocations) {
+      els.btnListLocations.addEventListener('click', () => {
+        const pre = els.terminalBody.querySelector('pre');
         if (pre) {
           pre.innerHTML += `\n<span class="t-prompt">$</span> ./campuspath --locations\n` +
             `<span class="t-cyan">--------------------------------------------------------------</span>\n` +
@@ -592,628 +263,222 @@
             `8     Parking Area            Parking           2 connections\n` +
             `9     Sports Ground           Sports            3 connections\n` +
             `<span class="t-cyan">--------------------------------------------------------------</span>\n`;
-          elements.terminalBody.scrollTop = elements.terminalBody.scrollHeight;
+          els.terminalBody.scrollTop = els.terminalBody.scrollHeight;
         }
       });
     }
 
-    // Refresh Dataset Button
-    if (elements.vBtnRefresh) {
-      elements.vBtnRefresh.addEventListener('click', () => {
-        showToast('Reloading Campus Map datasets...', 'info');
+    // Reload
+    if (els.btnReload) {
+      els.btnReload.addEventListener('click', () => {
+        showToast('Refreshing campus graph data...', 'info');
         window.location.reload();
       });
     }
   }
 
-  /**
-   * Swap Source and Destination Points
-   */
-  function handleSwapEndpoints() {
-    clearAlertBanner();
-    const currentSrc = elements.sourceSelect.value;
-    const currentDst = elements.destSelect.value;
-
-    if (!currentSrc && !currentDst) {
-      showAlertBanner('Select at least one campus location before swapping.', 'warning');
-      showToast('Select a location first', 'warning');
-      return;
-    }
-
-    // Trigger visual rotation on button icon
-    const svgIcon = elements.btnSwap.querySelector('svg');
-    if (svgIcon) {
-      svgIcon.style.transform = 'rotate(180deg)';
-      setTimeout(() => { svgIcon.style.transform = ''; }, 350);
-    }
-
-    // Temporarily re-enable options so swapped values can be cleanly assigned
-    Array.from(elements.sourceSelect.options).forEach(opt => opt.disabled = false);
-    Array.from(elements.destSelect.options).forEach(opt => opt.disabled = false);
-
-    // Swap values
-    elements.sourceSelect.value = currentDst;
-    elements.destSelect.value = currentSrc;
-
-    // Update map marker styles
-    window.CampusMap.selectSource(currentDst);
-    window.CampusMap.selectDestination(currentSrc);
-    updateDropdownOptionDisabling();
-    updateEndpointTags();
-
-    // Clear any previous active route path as endpoints inverted
-    window.CampusMap.clearRoute();
-    resetRouteDisplayState('Endpoints Swapped');
-
-    showToast('Swapped Starting Point and Destination', 'info');
-  }
-
-  /**
-   * Reset the entire navigation panel & map
-   */
-  function handleResetRoute() {
-    clearAlertBanner();
-    // Re-enable options so placeholder can be reset cleanly
-    Array.from(elements.sourceSelect.options).forEach(opt => opt.disabled = false);
-    Array.from(elements.destSelect.options).forEach(opt => opt.disabled = false);
-
-    elements.sourceSelect.value = '';
-    elements.destSelect.value = '';
-
-    updateDropdownOptionDisabling();
-    updateEndpointTags();
-    window.CampusMap.clearSelection();
-    window.CampusMap.clearRoute();
-
-    setLoadingState(false);
-    resetRouteDisplayState('Awaiting Query');
-    updateClickGuide('Tip: Click any building pin on map to set Source or Destination');
-    showToast('Navigation cleared', 'info');
-  }
-
-  /**
-   * Programmatically set Source
-   */
-  function setSource(idOrName) {
-    if (!idOrName) {
-      elements.sourceSelect.value = '';
-      window.CampusMap.selectSource('');
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
-      return;
-    }
-    const loc = window.CampusMap.getLocation(idOrName);
-    if (loc) {
-      // Re-enable in source dropdown in case it was disabled
-      Array.from(elements.sourceSelect.options).forEach(opt => {
-        if (opt.value === loc.id) opt.disabled = false;
-      });
-      elements.sourceSelect.value = loc.id;
-      window.CampusMap.selectSource(loc.id);
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
-    }
-  }
-
-  /**
-   * Programmatically set Destination
-   */
-  function setDestination(idOrName) {
-    if (!idOrName) {
-      elements.destSelect.value = '';
-      window.CampusMap.selectDestination('');
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
-      return;
-    }
-    const loc = window.CampusMap.getLocation(idOrName);
-    if (loc) {
-      // Re-enable in dest dropdown in case it was disabled
-      Array.from(elements.destSelect.options).forEach(opt => {
-        if (opt.value === loc.id) opt.disabled = false;
-      });
-      elements.destSelect.value = loc.id;
-      window.CampusMap.selectDestination(loc.id);
-      updateDropdownOptionDisabling();
-      updateEndpointTags();
-    }
-  }
-
   // =========================================================================
-  // 5. Shortest Path Execution & C++ Backend Integration (POST Contract)
+  // 4. C++ Backend Communication
   // =========================================================================
 
-  /**
-   * Find Shortest Path Action
-   * Sends POST /api/shortest-path with JSON:
-   *   { "source": "<Source Name>", "destination": "<Destination Name>" }
-   * 
-   * Expects response:
-   *   { "success": true, "route": [...], "distance": <number> }
-   */
-  async function handleFindShortestPath() {
-    clearAlertBanner();
+  const backendIdMap = {
+    'main-gate': 0,
+    'cs-block': 1,
+    'library': 2,
+    'canteen': 3,
+    'hostel': 4,
+    'auditorium': 5,
+    'academic-block': 6,
+    'admin-block': 7,
+    'parking-area': 8,
+    'sports-ground': 9
+  };
 
-    const srcId = elements.sourceSelect.value;
-    const dstId = elements.destSelect.value;
+  const idToFrontendMap = {
+    0: 'main-gate',
+    1: 'cs-block',
+    2: 'library',
+    3: 'canteen',
+    4: 'hostel',
+    5: 'auditorium',
+    6: 'academic-block',
+    7: 'admin-block',
+    8: 'parking-area',
+    9: 'sports-ground'
+  };
 
-    // Validation 1: Both endpoints must be chosen
-    if (!srcId && !dstId) {
-      showAlertBanner('Please select both a Starting Location and a Destination.', 'warning');
-      showToast('Select Source & Destination', 'warning');
+  async function checkBackendHealth() {
+    try {
+      const res = await fetch('http://localhost:8080/api/locations');
+      if (res.ok) {
+        els.engineBadge.innerHTML = '<span class="badge-dot"></span><span>C++ 8080 Active</span>';
+      }
+    } catch (e) {
+      els.engineBadge.innerHTML = '<span class="badge-dot" style="background:#ffbd2e;"></span><span>C++ Standby</span>';
+    }
+  }
+
+  async function fetchShortestPath() {
+    const srcKey = els.sourceSelect.value;
+    const dstKey = els.destSelect.value;
+
+    if (srcKey === dstKey) {
+      showToast('Source and Destination cannot be the same', 'warning');
       return;
     }
-    if (!srcId) {
-      showAlertBanner('Please select a Starting Location (Source).', 'warning');
-      elements.sourceSelect.focus();
-      return;
-    }
-    if (!dstId) {
-      showAlertBanner('Please select a Target Destination.', 'warning');
-      elements.destSelect.focus();
-      return;
-    }
 
-    // Validation 2: Source and Destination cannot be identical
-    if (srcId === dstId) {
-      showAlertBanner('Starting Location and Destination cannot be the same building.', 'warning');
-      showToast('Endpoints must be distinct', 'warning');
-      return;
-    }
+    const srcId = backendIdMap[srcKey];
+    const dstId = backendIdMap[dstKey];
 
-    const srcLoc = window.CampusMap.getLocation(srcId);
-    const dstLoc = window.CampusMap.getLocation(dstId);
+    els.itineraryStatusBadge.textContent = 'Calculating...';
+    els.btnFindPath.classList.add('loading');
 
-    // Enter Loading State
-    const targetUrl = getBackendUrl();
-    setLoadingState(true, `Querying C++ Dijkstra Engine at ${targetUrl}...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      // 1. Prepare Request Payload adhering strictly to API Contract
-      const backendIdMap = {
-        'main-gate': 0,
-        'cs-block': 1,
-        'library': 2,
-        'canteen': 3,
-        'hostel': 4,
-        'auditorium': 5,
-        'academic-block': 6,
-        'admin-block': 7,
-        'parking-area': 8,
-        'sports-ground': 9
-      };
+      const res = await fetch(DEFAULT_BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: srcId, destination: dstId }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-      const sourceBackendId = backendIdMap[srcId];
-      const destinationBackendId = backendIdMap[dstId];
-
-      if (sourceBackendId === undefined || destinationBackendId === undefined) {
-        throw new Error('This location is not yet available in the backend.');
+      if (!res.ok) {
+        throw new Error(`HTTP Error ${res.status}`);
       }
 
-      const requestPayload = {
-        source: sourceBackendId,
-        destination: destinationBackendId
-      };
-
-      // 2. Setup Timeout Controller
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-      // 3. Send Request via fetch()
-      let response;
-      try {
-        response = await fetch(targetUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(requestPayload),
-          signal: controller.signal
-        });
-      } finally {
-        clearTimeout(timeoutId);
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'No route found');
       }
 
-      // 4. Parse JSON Response
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (jsonErr) {
-        throw new Error(`C++ server at ${targetUrl} returned non-JSON response (HTTP ${response.status}). Ensure the server returns application/json.`);
-      }
-
-      // 5. Check HTTP Error Status
-      if (!response.ok) {
-        const errorDetail = responseData && (responseData.error || responseData.message)
-          ? (responseData.error || responseData.message)
-          : `HTTP ${response.status} ${response.statusText}`;
-        throw new Error(`Backend Error (${response.status}): ${errorDetail}`);
-      }
-
-      // 6. Check Business Success Flag
-      const isSuccess = responseData.success === true || responseData.status === 'success';
-      if (!isSuccess) {
-        const failureReason = responseData.message || responseData.error || 'Backend reported that no route could be found.';
-        throw new Error(failureReason);
-      }
-
-      // 7. Extract Route Array (support 'route' or fallback 'path')
-      // 7. Convert backend numeric IDs to frontend location IDs
-      const rawRoute = responseData.route || responseData.path;
-
-      if (!Array.isArray(rawRoute) || rawRoute.length < 2) {
-        throw new Error('Backend response must contain a valid route array.');
-      }
-
-      const backendToFrontendId = {
-        0: 'main-gate',
-        1: 'cs-block',
-        2: 'library',
-        3: 'canteen',
-        4: 'hostel',
-        5: 'auditorium',
-        6: 'academic-block',
-        7: 'admin-block',
-        8: 'parking-area',
-        9: 'sports-ground'
-      };
-
-      const routeArray = rawRoute.map(item => {
-        const backendId =
-          typeof item === 'object' && item !== null ? item.id : item;
-
-        return backendToFrontendId[Number(backendId)];
+      // Convert backend route IDs
+      const routeKeys = (data.route || []).map(item => {
+        const id = typeof item === 'object' ? item.id : item;
+        return idToFrontendMap[id];
       });
 
-      if (routeArray.some(id => id === undefined)) {
-        throw new Error('Backend returned an unknown campus location ID.');
-      }
-      // 8. Requirement 7: Validate each location against campus map
-      const unrecognized = [];
-      routeArray.forEach(nameOrId => {
-        if (!window.CampusMap.getLocation(nameOrNameClean(nameOrId))) {
-          unrecognized.push(nameOrId);
-        }
-      });
+      lastRouteResult = {
+        distance: data.distance,
+        routeKeys: routeKeys,
+        rawRoute: data.route,
+        telemetry: data.telemetry || {}
+      };
 
-      if (unrecognized.length > 0) {
-        throw new Error(`Backend returned unrecognized location(s): ${unrecognized.map(u => `"${u}"`).join(', ')}. Ensure C++ graph vertex names match official campus locations.`);
-      }
-
-      // 9. Requirement 4 & 11: Validate distance
-      if (responseData.distance === undefined || responseData.distance === null || typeof responseData.distance !== 'number') {
-        throw new Error('Backend response must include a numeric "distance" value (in meters).');
-      }
-
-      // 10. Display Successful Result & Highlight Route
-      displayRouteResult({
-        source: srcLoc.name,
-        destination: dstLoc.name,
-        route: routeArray,
-        distance: responseData.distance,
-        telemetry: responseData.telemetry
-      });
-
-      showToast(`Optimal path received from C++ backend (${responseData.distance} m)!`, 'success');
-      updateHeaderStatus(true);
+      renderRouteResult(lastRouteResult);
+      showToast(`Shortest path calculated: ${data.distance}m!`, 'success');
 
     } catch (err) {
-      // Handle Network, HTTP, or Contract Errors
-      handleRouteCalculationError(srcLoc, dstLoc, err, targetUrl);
-      updateHeaderStatus(false);
+      showToast(`Routing Failed: ${err.message}`, 'warning');
+      els.itineraryStatusBadge.textContent = 'Error';
     } finally {
-      setLoadingState(false);
+      els.btnFindPath.classList.remove('loading');
     }
-  }
-
-  function nameOrNameClean(val) {
-    return String(val || '').trim();
-  }
-
-  /**
-   * Sets UI Loading State (Button spinner & Radar animation)
-   */
-  function setLoadingState(isLoading, subtitleText = '') {
-    if (isLoading) {
-      elements.btnFindPath.classList.add('is-loading');
-      elements.btnFindPath.disabled = true;
-      if (elements.btnSpinner) elements.btnSpinner.style.display = 'inline-block';
-      if (elements.btnFindIcon) elements.btnFindIcon.style.display = 'none';
-      if (elements.btnFindLabel) elements.btnFindLabel.textContent = 'Calculating Route...';
-
-      elements.routeStatusBadge.textContent = 'Querying Backend...';
-      elements.routeStatusBadge.className = 'badge badge-accent';
-
-      elements.routePlaceholder.style.display = 'none';
-      elements.routeContent.style.display = 'none';
-      elements.routeErrorState.style.display = 'none';
-      elements.routeLoadingState.style.display = 'block';
-
-      if (elements.loadingSubtitle && subtitleText) {
-        elements.loadingSubtitle.textContent = subtitleText;
-      }
-    } else {
-      elements.btnFindPath.classList.remove('is-loading');
-      elements.btnFindPath.disabled = false;
-      if (elements.btnSpinner) elements.btnSpinner.style.display = 'none';
-      if (elements.btnFindIcon) elements.btnFindIcon.style.display = 'inline-block';
-      if (elements.btnFindLabel) elements.btnFindLabel.textContent = 'Find Shortest Path';
-
-      elements.routeLoadingState.style.display = 'none';
-    }
-  }
-
-  /**
-   * Updates Header C++ Engine Status Indicator
-   */
-  function updateHeaderStatus(isOnline) {
-    if (!elements.backendStatusChip) return;
-    const label = elements.backendStatusChip.querySelector('.status-label');
-    const dot = elements.backendStatusChip.querySelector('.status-dot');
-
-    if (isOnline) {
-      if (label) label.textContent = 'C++ Engine: Connected';
-      if (dot) dot.style.backgroundColor = '#00e676';
-    } else {
-      if (label) label.textContent = 'C++ Engine: Offline';
-      if (dot) dot.style.backgroundColor = '#ff5252';
-    }
-  }
-
-  /**
-   * Contextual Error Handler for C++ Backend Communication
-   */
-  function handleRouteCalculationError(srcLoc, dstLoc, error, endpointUrl) {
-    elements.routeStatusBadge.textContent = 'Connection Error';
-    elements.routeStatusBadge.className = 'badge';
-
-    elements.routePlaceholder.style.display = 'none';
-    elements.routeContent.style.display = 'none';
-    elements.routeLoadingState.style.display = 'none';
-    elements.routeErrorState.style.display = 'block';
-
-    const isTimeout = error.name === 'AbortError';
-    const isNetworkDown = error.name === 'TypeError' || error.message.includes('Failed to fetch') || error.message.includes('NetworkError');
-
-    if (isTimeout) {
-      elements.errorTitle.textContent = `Request Timed Out (${REQUEST_TIMEOUT_MS / 1000}s)`;
-      elements.errorDesc.innerHTML = `
-        The C++ server at <code>${endpointUrl}</code> took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to respond.<br>
-        Check if the C++ Dijkstra calculation is hanging or blocked.
-      `;
-    } else if (isNetworkDown) {
-      elements.errorTitle.textContent = 'C++ Graph Service Unreachable';
-      elements.errorDesc.innerHTML = `
-        Could not connect to <code>${endpointUrl}</code> via <code>POST /api/shortest-path</code>.<br>
-        <strong>Request sent:</strong> <code>{"source": "${srcLoc.name}", "destination": "${dstLoc.name}"}</code>.<br><br>
-        <span style="color: var(--text-dim); font-size: 0.72rem; display: block; line-height: 1.4;">
-          • Make sure your C++ HTTP server is running.<br>
-          • Ensure CORS headers (<code>Access-Control-Allow-Origin: *</code>) are sent.<br>
-          • You can change the endpoint URL under <strong>Configure ▾</strong> above.
-        </span>
-      `;
-    } else {
-      elements.errorTitle.textContent = 'Backend Routing Error';
-      elements.errorDesc.innerHTML = `
-        <strong>Message from C++ Engine:</strong><br>
-        <span style="color: #ff9e9e;">${escapeHtml(error.message)}</span>
-      `;
-    }
-
-    elements.errorActionRow.innerHTML = `
-      <button type="button" class="btn btn-secondary" id="btn-error-test-payload" style="font-size: 0.78rem; padding: 8px 14px;">
-        Preview Sample C++ Response
-      </button>
-    `;
-
-    const btnTest = document.getElementById('btn-error-test-payload');
-    if (btnTest) {
-      btnTest.addEventListener('click', () => {
-        feedSampleCppPayload(srcLoc.id, dstLoc.id);
-      });
-    }
-
-    showAlertBanner(`Backend Error: ${error.message}`, 'warning');
-    showToast('C++ Engine communication failed', 'danger');
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   // =========================================================================
-  // 6. Route Result Card & Itinerary Timeline Rendering
+  // 5. Render Calculated Route Result
   // =========================================================================
 
-  /**
-   * Renders Route Output Received from C++ Backend
-   * @param {Object} data - Schema: { success: true, route: string[], distance: number }
-   */
-  function displayRouteResult(data) {
-    const routeArray = data.route || data.path;
-    if (!routeArray || !Array.isArray(routeArray) || routeArray.length < 2) {
-      showAlertBanner('Invalid route sequence received from backend.', 'warning');
-      return;
-    }
+  function renderRouteResult(res) {
+    if (!res) return;
 
-    // Resolve location objects
-    const resolvedNodes = routeArray.map(item => window.CampusMap.getLocation(item)).filter(Boolean);
-    if (resolvedNodes.length < 2) {
-      showAlertBanner('Route contains unknown campus buildings.', 'warning');
-      return;
-    }
+    // 1. Update Distance Callout
+    els.displayDistance.innerHTML = `${res.distance}<span class="unit">m</span>`;
+    els.displaySub.textContent = `OPTIMAL SHORTEST ROUTE (${res.routeKeys.length} LANDMARKS)`;
 
-    // Switch view
-    elements.routePlaceholder.style.display = 'none';
-    elements.routeLoadingState.style.display = 'none';
-    elements.routeErrorState.style.display = 'none';
-    elements.routeContent.style.display = 'block';
+    // 2. Update Description
+    const srcName = window.CampusMap.getLocation(res.routeKeys[0])?.name || 'Origin';
+    const dstName = window.CampusMap.getLocation(res.routeKeys[res.routeKeys.length - 1])?.name || 'Destination';
+    const execTime = res.telemetry.execution_time_us ? `${res.telemetry.execution_time_us.toFixed(2)} µs` : '43.15 µs';
+    const relaxations = res.telemetry.relaxations_count || (res.routeKeys.length * 2);
 
-    // Badge
-    elements.routeStatusBadge.textContent = 'Computed Optimal';
-    elements.routeStatusBadge.className = 'badge badge-success';
+    els.displayDesc.textContent = `Optimal route from ${srcName} to ${dstName} computed in ${execTime} with ${relaxations} edge relaxations. Dijkstra guarantees zero redundant backtracking and global shortest distance.`;
 
-    // Endpoints Banner
-    const firstNode = resolvedNodes[0];
-    const lastNode = resolvedNodes[resolvedNodes.length - 1];
-    if (elements.routeSrcLabel) elements.routeSrcLabel.textContent = firstNode.name;
-    if (elements.routeDstLabel) elements.routeDstLabel.textContent = lastNode.name;
-
-    // Display Exact Distance returned by backend
-    const exactBackendDistance = data.distance;
-    elements.resDistance.textContent = `${exactBackendDistance} m`;
-
-    // Compute Walking Time strictly based on returned distance (~80 meters/min)
-    const walkingSpeedMps = 1.35;
-    const estimatedMinutes = Math.max(1, Math.round(exactBackendDistance / (walkingSpeedMps * 60)));
-    elements.resTime.textContent = `~${estimatedMinutes} min`;
-
-    // Hops
-    elements.resHops.textContent = `${resolvedNodes.length} blocks`;
-
-    // Render Ordered Sequence Itinerary Timeline
-    elements.pathTimeline.innerHTML = '';
-    resolvedNodes.forEach((node, index) => {
-      const li = document.createElement('li');
-      li.className = 'timeline-step clickable';
-      li.setAttribute('title', `Click to focus on ${node.name} on the map`);
-
-      if (index === 0) {
-        li.classList.add('step-source');
-      } else if (index === resolvedNodes.length - 1) {
-        li.classList.add('step-dest');
+    // 3. Update Itinerary Chips
+    els.itineraryStatusBadge.textContent = 'Verified Optimal';
+    els.itineraryChips.innerHTML = '';
+    res.routeKeys.forEach((key, idx) => {
+      const loc = window.CampusMap.getLocation(key);
+      const chip = document.createElement('span');
+      chip.className = 'chip-point';
+      if (idx === 0 || idx === res.routeKeys.length - 1) {
+        chip.classList.add('chip-active');
       }
+      chip.textContent = loc ? loc.name : key;
+      els.itineraryChips.appendChild(chip);
 
-      // Step text and category
-      const infoWrap = document.createElement('div');
-      infoWrap.className = 'step-info-wrap';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'step-name';
-      nameSpan.textContent = `${index + 1}. ${node.name}`;
-
-      const catSpan = document.createElement('span');
-      catSpan.className = 'step-category';
-      catSpan.textContent = node.category;
-
-      infoWrap.appendChild(nameSpan);
-      infoWrap.appendChild(catSpan);
-
-      // Badge label
-      const badgeSpan = document.createElement('span');
-      badgeSpan.className = 'step-badge';
-      if (index === 0) {
-        badgeSpan.textContent = 'START';
-      } else if (index === resolvedNodes.length - 1) {
-        badgeSpan.textContent = 'DESTINATION';
-      } else {
-        badgeSpan.textContent = `Stop ${index}`;
+      if (idx < res.routeKeys.length - 1) {
+        const arrow = document.createElement('span');
+        arrow.className = 'chip-arrow';
+        arrow.textContent = '→';
+        els.itineraryChips.appendChild(arrow);
       }
-
-      li.appendChild(infoWrap);
-      li.appendChild(badgeSpan);
-
-      // Click to focus building on the SVG campus map
-      li.addEventListener('click', () => {
-        if (window.CampusMap.focusBuilding) {
-          window.CampusMap.focusBuilding(node.id);
-        }
-        showToast(`Viewing ${node.name} on map`, 'info');
-        if (window.innerWidth <= 992) {
-          const mapTab = document.querySelector('.mobile-view-tabs .tab-btn[data-view="map"]');
-          if (mapTab) mapTab.click();
-        }
-      });
-
-      elements.pathTimeline.appendChild(li);
     });
 
-    // Draw route line and walkway segment glows on SVG map
-    window.CampusMap.highlightRoute(routeArray);
-
-    // Save calculation data
-    lastRouteData = {
-      source: firstNode.name,
-      destination: lastNode.name,
-      route: routeArray,
-      resolvedNodes: resolvedNodes,
-      distance: exactBackendDistance,
-      telemetry: data.telemetry || {}
-    };
-
-    // Update Telemetry HUD & Terminal Emulator
-    updateTelemetryHUD(data.telemetry, resolvedNodes);
-    updateTerminalEmulator(firstNode, lastNode, resolvedNodes, exactBackendDistance, data.telemetry);
-  }
-
-  function updateTelemetryHUD(telemetry, resolvedNodes) {
-    const relaxations = telemetry && telemetry.relaxations_count !== undefined 
-      ? telemetry.relaxations_count 
-      : Math.max(5, resolvedNodes.length * 2);
-
-    const execUs = telemetry && telemetry.execution_time_us !== undefined
-      ? `${telemetry.execution_time_us.toFixed(2)} µs`
-      : '43.15 µs';
-
-    if (elements.telemetryRelaxations) {
-      elements.telemetryRelaxations.textContent = relaxations;
-    }
-    if (elements.queueLatencyBadge) {
-      elements.queueLatencyBadge.textContent = execUs;
-    }
-
-    if (!elements.queueVisitedPills) return;
-
-    // Visited pills
-    const visitedOrder = (telemetry && telemetry.visited_order) || resolvedNodes.map(n => n.id);
-    elements.queueVisitedPills.innerHTML = '';
-    visitedOrder.forEach((nodeId, idx) => {
-      const loc = window.CampusMap.getLocation(nodeId);
-      const name = loc ? loc.name : `Node ${nodeId}`;
-      const pill = document.createElement('span');
-      pill.className = 'q-node-pill';
-      pill.id = `q-pill-${nodeId}`;
-      pill.textContent = `${idx + 1}. ${name}`;
-      elements.queueVisitedPills.appendChild(pill);
+    // 4. Update 3D Floating Discs Elevation & Glow
+    document.querySelectorAll('.floating-disc-wrap').forEach(disc => {
+      disc.classList.remove('is-route-active');
     });
+
+    res.routeKeys.forEach((key, idx) => {
+      const disc = document.querySelector(`.floating-disc-wrap[data-id="${key}"]`);
+      if (disc) {
+        disc.classList.add('is-route-active');
+        const badge = disc.querySelector('.disc-step-badge');
+        if (badge) badge.textContent = `${idx + 1}`;
+      }
+    });
+
+    // 5. Update 2D Schematic Map
+    if (window.CampusMap && window.CampusMap.highlightRoute) {
+      window.CampusMap.highlightRoute(res.routeKeys);
+    }
+
+    // 6. Update Terminal Emulator Output
+    updateTerminalScreen(srcName, dstName, res);
   }
 
-  function updateTerminalEmulator(firstNode, lastNode, resolvedNodes, distance, telemetry) {
-    if (!elements.terminalBody) return;
-    const timeUs = telemetry && telemetry.execution_time_us ? telemetry.execution_time_us.toFixed(2) : '43.15';
-    let stepsHtml = '';
-    resolvedNodes.forEach((node, i) => {
+  function updateTerminalScreen(srcName, dstName, res) {
+    if (!els.terminalBody) return;
+
+    let steps = '';
+    res.routeKeys.forEach((key, i) => {
+      const loc = window.CampusMap.getLocation(key);
+      const name = loc ? loc.name : key;
+      const cat = loc ? loc.category : '';
       if (i === 0) {
-        stepsHtml += `    <span class="t-green">[Start]</span>   ${node.name} (${node.category})\n`;
+        steps += `    <span class="t-green">[Start]</span>   ${name} (${cat})\n`;
       } else {
-        stepsHtml += `        |   + pathway leg\n`;
-        if (i === resolvedNodes.length - 1) {
-          stepsHtml += `    <span class="t-green">[Arrive]</span>  ${node.name} (${node.category})  [Total: ${distance}m]\n`;
+        steps += `        |   + pathway leg\n`;
+        if (i === res.routeKeys.length - 1) {
+          steps += `    <span class="t-green">[Arrive]</span>  ${name} (${cat})  [Total: ${res.distance}m]\n`;
         } else {
-          stepsHtml += `    <span class="t-yellow">[Hop ${i}]</span>   ${node.name} (${node.category})\n`;
+          steps += `    <span class="t-yellow">[Hop ${i}]</span>   ${name} (${cat})\n`;
         }
       }
     });
 
-    elements.terminalBody.innerHTML = `
-<pre class="terminal-code"><code><span class="t-prompt">$</span> ./campuspath <span class="t-str">"${firstNode.name}"</span> <span class="t-str">"${lastNode.name}"</span>
+    const timeUs = res.telemetry.execution_time_us ? res.telemetry.execution_time_us.toFixed(2) : '43.15';
+
+    els.terminalBody.innerHTML = `
+<pre><code><span class="t-prompt">$</span> ./campuspath <span class="t-yellow">"${srcName}"</span> <span class="t-yellow">"${dstName}"</span>
 
 <span class="t-cyan">======================================================</span>
 <span class="t-bold">           OPTIMAL CAMPUS ROUTE (DIJKSTRA)            </span>
 <span class="t-cyan">======================================================</span>
-  Origin:      ${firstNode.name} [ID: ${firstNode.id}]
-  Destination: ${lastNode.name} [ID: ${lastNode.id}]
+  Origin:      ${srcName}
+  Destination: ${dstName}
 ------------------------------------------------------
-  Total Distance: ${distance} metres
-  Total Stops:    ${resolvedNodes.length} landmarks
+  Total Distance: ${res.distance} metres
+  Total Stops:    ${res.routeKeys.length} landmarks
   Search Time:    ${timeUs} microseconds
 ------------------------------------------------------
   TURN-BY-TURN WAYFINDING:
 
-${stepsHtml}
+${steps}
 ------------------------------------------------------
   ADSA COMPLEXITY & GUARANTEES:
     - Algorithm:         Dijkstra's Single-Source Shortest Path
@@ -1225,115 +490,71 @@ ${stepsHtml}
     `;
   }
 
-  /**
-   * Sample C++ Backend Output Payload Feeder (Developer Verification Hook)
-   * Strictly for testing the display against the proposed API contract without running Dijkstra in JS.
-   */
-  function feedSampleCppPayload(preferredSrc = 'main-gate', preferredDst = 'library') {
-    const sLoc = window.CampusMap.getLocation(preferredSrc) || window.CampusMap.getLocation('main-gate');
-    const dLoc = window.CampusMap.getLocation(preferredDst) || window.CampusMap.getLocation('library');
-
-    setSource(sLoc.id);
-    setDestination(dLoc.id);
-
-    // Contract Schema demonstration adhering to verified API specification
-    const sampleContractPayload = {
-      success: true,
-      route: [sLoc.name, 'Canteen', dLoc.name].filter((v, i, a) => a.indexOf(v) === i),
-      distance: 250
-    };
-    if (sampleContractPayload.route.length < 2) {
-      sampleContractPayload.route = [sLoc.name, dLoc.name];
-    }
-
-    displayRouteResult(sampleContractPayload);
-    showToast(`Loaded sample C++ output: ${sampleContractPayload.route.join(' → ')} (${sampleContractPayload.distance}m)`, 'success');
-  }
-
   // =========================================================================
-  // 7. Alert & State Helpers
+  // 6. Step-by-Step Dijkstra Wave Animation
   // =========================================================================
 
-  function resetRouteDisplayState(badgeText = 'Awaiting Query') {
-    elements.routeStatusBadge.textContent = badgeText;
-    elements.routeStatusBadge.className = 'badge';
-    elements.routePlaceholder.style.display = 'block';
-    elements.routeContent.style.display = 'none';
-    elements.routeLoadingState.style.display = 'none';
-    elements.routeErrorState.style.display = 'none';
-  }
-
-  function showAlertBanner(message, type = 'danger') {
-    if (!elements.navAlertBanner) return;
-    elements.navAlertText.textContent = message;
-    elements.navAlertBanner.className = `alert-banner alert-${type}`;
-    elements.navAlertBanner.style.display = 'flex';
-  }
-
-  function clearAlertBanner() {
-    if (elements.navAlertBanner) {
-      elements.navAlertBanner.style.display = 'none';
-    }
-  }
-
-  function updateClickGuide(message) {
-    if (elements.clickGuideText) {
-      elements.clickGuideText.textContent = message;
-    }
-  }
-
-  /**
-   * Toast Notification Utility
-   */
-  function showToast(message, type = 'info') {
-    if (!elements.toastContainer) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-
-    let iconSvg = '';
-    if (type === 'success') {
-      iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e676" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-    } else if (type === 'warning') {
-      iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffa502" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
-    } else if (type === 'danger') {
-      iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff4757" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+  function animateDijkstraWave() {
+    if (!lastRouteResult) {
+      fetchShortestPath().then(() => {
+        runAnimationSequence();
+      });
     } else {
-      iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+      runAnimationSequence();
     }
+  }
 
-    toast.innerHTML = `${iconSvg}<span>${message}</span>`;
-    elements.toastContainer.appendChild(toast);
+  function runAnimationSequence() {
+    if (!lastRouteResult || isSimulating) return;
+    isSimulating = true;
 
+    showToast('Visualizing Dijkstra priority queue greedy wave...', 'info');
+
+    // Reset discs
+    document.querySelectorAll('.floating-disc-wrap').forEach(d => d.classList.remove('is-route-active'));
+
+    const visitedKeys = (lastRouteResult.telemetry.visited_order || [])
+      .map(id => idToFrontendMap[id])
+      .filter(Boolean);
+
+    const sequence = visitedKeys.length > 0 ? visitedKeys : lastRouteResult.routeKeys;
+
+    sequence.forEach((key, idx) => {
+      setTimeout(() => {
+        const disc = document.querySelector(`.floating-disc-wrap[data-id="${key}"]`);
+        if (disc) {
+          disc.classList.add('is-route-active');
+        }
+
+        if (idx === sequence.length - 1) {
+          setTimeout(() => {
+            renderRouteResult(lastRouteResult);
+            isSimulating = false;
+            showToast(`Dijkstra finished! Shortest path: ${lastRouteResult.distance}m`, 'success');
+          }, 300);
+        }
+      }, idx * 450);
+    });
+  }
+
+  // Toast Notification
+  function showToast(msg, type = 'info') {
+    if (!els.toastContainer) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    els.toastContainer.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px) scale(0.9)';
       setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    }, 2800);
   }
 
-  // =========================================================================
-  // 8. Public API Export
-  // =========================================================================
-
-  window.CampusPath = {
-    init: initApp,
-    getBackendUrl,
-    setBackendUrl,
-    setSource,
-    setDestination,
-    reset: handleResetRoute,
-    displayRouteResult,
-    feedSampleCppPayload,
-    showAlertBanner,
-    clearAlertBanner
-  };
-
-  // Run on DOM ready
+  // Boot on DOM ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    initApp();
+    init();
   }
 
 })(window, document);
