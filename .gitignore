@@ -1,0 +1,24 @@
+# Build Artifacts
+build/
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+
+# Backend specifics
+backend/build/
+backend/bin/
+backend/tests/temp_*
+backend/campuspath_app
+
+# Editor & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
