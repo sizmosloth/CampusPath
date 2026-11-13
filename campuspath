@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# CampusPath CLI Quick Launcher
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN="$SCRIPT_DIR/backend/bin/campuspath"
+
+# Build if binary doesn't exist
+if [ ! -f "$BIN" ]; then
+    echo "⚡ Building CampusPath C++ engine..."
+    make -C "$SCRIPT_DIR/backend" all > /dev/null
+fi
+
+exec "$BIN" "$@"
