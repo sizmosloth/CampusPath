@@ -3,393 +3,298 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CampusPath – Apple Vision Spatial Navigation</title>
+  <title>CampusPath – Autonomous Graph Navigation & Shortest Path Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="vision-spatial-environment">
+<body class="app-body">
 
   <!-- =========================================================================
-       1. Top Floating VisionOS Safari Glass Capsule Bar
+       1. Top Modern App Header (Clean Apple/Nike Style - NO Fake Safari Bar)
        ========================================================================= -->
-  <header class="safari-floating-capsule">
-    <!-- Window controls -->
-    <div class="safari-left-tools">
-      <button class="safari-tool-btn" title="Sidebar">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="3"></rect>
-          <line x1="9" y1="3" x2="9" y2="21"></line>
-        </svg>
-      </button>
-      <button class="safari-tool-btn" id="btn-safari-back" title="Back">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      </button>
-      <button class="safari-tool-btn" id="btn-safari-forward" title="Forward">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-      </button>
-    </div>
-
-    <!-- Center Translucent Search/URL Pill -->
-    <div class="safari-url-pill">
-      <span class="safari-aa-icon">Aa</span>
-      <div class="safari-url-box">
-        <svg class="safari-lock-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2"></rect>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-        <span class="safari-url-domain">campuspath.spatial</span>
+  <header class="app-top-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <span class="brand-glyph">▲</span>
       </div>
-      <button class="safari-refresh-btn" id="btn-reload-dataset" title="Reload Dataset">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-      </button>
+      <div class="brand-text">
+        <span class="brand-title">CampusPath</span>
+        <span class="brand-tag">ADSA PRO v2.4</span>
+      </div>
     </div>
 
-    <!-- Right Window Action Tools -->
-    <div class="safari-right-tools">
-      <button class="safari-tool-btn" title="Share">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-          <polyline points="16 6 12 2 8 6"></polyline>
-          <line x1="12" y1="2" x2="12" y2="15"></line>
-        </svg>
+    <!-- Center View Switcher Tabs -->
+    <nav class="header-nav-tabs">
+      <button type="button" class="tab-link active" id="tab-nav-map" data-view="map-view">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+        <span>Interactive Map</span>
       </button>
-      <button class="safari-tool-btn" title="New Tab">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
+      <button type="button" class="tab-link" id="tab-nav-terminal" data-view="terminal-view">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+        <span>Terminal CLI</span>
       </button>
-      <button class="safari-tool-btn" title="Tabs Overview">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="14" height="14" rx="2"></rect>
-          <path d="M7 21h12a2 2 0 0 0 2-2V7"></path>
-        </svg>
-      </button>
+    </nav>
+
+    <!-- Right Telemetry Chips -->
+    <div class="header-right">
+      <div class="status-chip" id="engine-status-chip">
+        <span class="status-live-dot"></span>
+        <span id="engine-status-text">C++ Engine 8080 Active</span>
+      </div>
+      <div class="complexity-chip" title="Dijkstra Min-Heap Time Complexity">
+        <span>O((V + E) log V)</span>
+      </div>
     </div>
   </header>
 
   <!-- =========================================================================
-       2. Apple Vision Pro Floating White Spatial Window
+       2. Main Interactive Stage (2-Column Studio Dashboard)
        ========================================================================= -->
-  <main class="spatial-hero-card" id="spatial-card">
+  <main class="app-main-layout">
 
-    <!-- Top Card Navigation -->
-    <nav class="card-navbar">
-      <div class="brand-group">
-        <div class="brand-triangle-icon" title="CampusPath Core">▲</div>
-        <div class="brand-links">
-          <button type="button" class="nav-link active" data-tab="objects-view" id="nav-btn-objects">Spatial Objects</button>
-          <button type="button" class="nav-link" data-tab="schematic-view" id="nav-btn-schematic">Schematic Map</button>
-          <button type="button" class="nav-link" data-tab="terminal-view" id="nav-btn-terminal">Terminal CLI</button>
-        </div>
-      </div>
-
-      <div class="telemetry-group">
-        <div class="engine-badge" id="engine-badge">
-          <span class="badge-dot"></span>
-          <span>C++ 8080 Active</span>
-        </div>
-        <div class="complexity-badge" title="Dijkstra Min-Heap Time Complexity">
-          O((V + E) log V)
-        </div>
-      </div>
-    </nav>
-
-    <!-- Massive Hero Background Watermark Typography -->
-    <div class="hero-watermark-text" aria-hidden="true" id="hero-watermark">
-      campuspath
-    </div>
-
-    <!-- =====================================================================
-         VIEW 1: 3D Exploded Spatial Objects View (Matching Reference Photo!)
-         ===================================================================== -->
-    <section class="spatial-view-section active" id="view-objects">
+    <!-- Left Navigation & Telemetry Dock -->
+    <aside class="control-dock">
       
-      <!-- Left Side: Editorial Details & Minimalist Route Controls -->
-      <div class="editorial-left-col">
-        
-        <!-- Distance / Price Metric -->
-        <div class="metric-callout">
-          <span class="distance-value" id="display-distance">450<span class="unit">m</span></span>
-          <span class="distance-sub" id="display-sub">OPTIMAL SHORTEST ROUTE</span>
+      <!-- Primary Route Planner Card -->
+      <section class="dock-card route-card">
+        <div class="card-header">
+          <div class="header-title-wrap">
+            <span class="card-kicker">WAYFINDING CORE</span>
+            <h2 class="card-title">Route Planner</h2>
+          </div>
+          <span class="metric-pill" id="badge-hops">Standby</span>
         </div>
 
-        <!-- Editorial Description Paragraph -->
-        <p class="editorial-description" id="display-description">
-          CampusPath computes the optimal walking trajectory between landmarks. Powered by a high-performance C++ Dijkstra engine with min-priority queue edge relaxation and zero backtracking.
-        </p>
-
-        <!-- Minimalist Origin & Destination Selectors -->
-        <form class="minimal-routing-form" onsubmit="return false;">
-          <div class="minimal-input-row">
-            <div class="minimal-select-box">
-              <span class="select-label">ORIGIN</span>
-              <select id="source-select" aria-label="Select Starting Point">
-                <!-- Dynamically populated -->
-              </select>
+        <form class="route-form" onsubmit="return false;">
+          <!-- Origin Selector -->
+          <div class="input-block">
+            <div class="input-label-row">
+              <span class="pin-dot pin-origin"></span>
+              <label for="source-select">Starting Landmark (Origin)</label>
             </div>
-
-            <button type="button" class="minimal-swap-btn" id="btn-swap-locations" title="Swap Origin & Destination">
-              ⇄
-            </button>
-
-            <div class="minimal-select-box">
-              <span class="select-label">DESTINATION</span>
-              <select id="dest-select" aria-label="Select Destination Point">
-                <!-- Dynamically populated -->
+            <div class="select-field">
+              <select id="source-select" aria-label="Select Starting Point">
+                <!-- Dynamically populated via map.js -->
               </select>
+              <span class="select-arrow">▾</span>
             </div>
           </div>
 
-          <!-- Action Buttons (matching "Preorder ->" in reference image) -->
-          <div class="minimal-action-row">
-            <button type="button" class="btn-apple-action" id="btn-find-path">
-              <span>Find Shortest Route</span>
-              <span class="arrow-glyph">→</span>
+          <!-- Swap Button Row -->
+          <div class="swap-row">
+            <div class="swap-line"></div>
+            <button type="button" class="btn-swap-endpoints" id="btn-swap-locations" title="Swap Origin & Destination">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"></path></svg>
             </button>
-            <button type="button" class="btn-apple-secondary" id="btn-animate-algorithm" title="Play Step-by-Step Dijkstra Wave">
-              <span>Animate Wave ⚡</span>
+            <div class="swap-line"></div>
+          </div>
+
+          <!-- Destination Selector -->
+          <div class="input-block">
+            <div class="input-label-row">
+              <span class="pin-dot pin-dest"></span>
+              <label for="dest-select">Target Landmark (Destination)</label>
+            </div>
+            <div class="select-field">
+              <select id="dest-select" aria-label="Select Target Destination">
+                <!-- Dynamically populated via map.js -->
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons-group">
+            <button type="button" class="btn-primary-action" id="btn-find-path">
+              <span>Find Shortest Path</span>
+              <span class="btn-arrow">→</span>
+            </button>
+            <button type="button" class="btn-secondary-action" id="btn-animate-algorithm" title="Play Step-by-Step Greedy Priority Queue Search">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Animate Wave</span>
             </button>
           </div>
         </form>
 
-        <!-- Itinerary Quick Pill Sequence -->
-        <div class="turn-itinerary-preview" id="itinerary-preview">
-          <div class="itinerary-header">
-            <span>TURN-BY-TURN WAYPOINTS</span>
-            <span class="itinerary-badge" id="itinerary-status-badge">Standby</span>
-          </div>
-          <div class="itinerary-chips" id="itinerary-chips">
-            <span class="chip-point chip-active">Main Gate (0)</span>
-            <span class="chip-arrow">→</span>
-            <span class="chip-point">Admin Block (7)</span>
-            <span class="chip-arrow">→</span>
-            <span class="chip-point chip-active">Library (2)</span>
-          </div>
-        </div>
-
         <!-- Quick Commute Presets -->
-        <div class="popular-routes-row">
-          <span class="presets-label">QUICK ROUTES:</span>
-          <button type="button" class="pill-preset" data-src="main-gate" data-dst="library">Gate → Library</button>
-          <button type="button" class="pill-preset" data-src="academic-block" data-dst="cs-block">Academic → CS</button>
-          <button type="button" class="pill-preset" data-src="hostel" data-dst="canteen">Hostel → Canteen</button>
-        </div>
-      </div>
-
-      <!-- Right Side: 3D Exploded Layered Objects Stack (Directly from Photo!) -->
-      <div class="spatial-objects-stage" id="spatial-objects-stage">
-        
-        <!-- Disc 1: Charcoal / Matte Black (Main Gate) -->
-        <div class="floating-disc-wrap disc-pos-1" data-id="main-gate" data-name="Main Gate">
-          <svg viewBox="0 0 340 180" class="disc-svg">
-            <defs>
-              <radialGradient id="shadow-1" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.45)"/>
-                <stop offset="60%" stop-color="rgba(0,0,0,0.15)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-              </radialGradient>
-              <linearGradient id="disc-black-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#3d434a"/>
-                <stop offset="50%" stop-color="#2a2e34"/>
-                <stop offset="100%" stop-color="#181a1d"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="170" cy="142" rx="142" ry="28" fill="url(#shadow-1)"/>
-            <path d="M 32,68 A 138,42 0 0,0 308,68 v 18 A 138,42 0 0,1 32,86 Z" fill="#14171a"/>
-            <ellipse cx="170" cy="68" rx="138" ry="42" fill="url(#disc-black-grad)"/>
-            <ellipse cx="170" cy="66" rx="130" ry="38" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.2"/>
-            <ellipse cx="170" cy="68" rx="98" ry="27" fill="#16181b" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
-            <text x="170" y="70" text-anchor="middle" class="disc-text-title">MAIN GATE</text>
-            <text x="170" y="85" text-anchor="middle" class="disc-text-sub">ACCESS • NODE 0</text>
-          </svg>
-          <div class="disc-step-badge">1</div>
-        </div>
-
-        <!-- Disc 2: Muted Slate Grey (Parking Area) -->
-        <div class="floating-disc-wrap disc-pos-2" data-id="parking-area" data-name="Parking Area">
-          <svg viewBox="0 0 340 180" class="disc-svg">
-            <defs>
-              <radialGradient id="shadow-2" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.4)"/>
-                <stop offset="60%" stop-color="rgba(0,0,0,0.12)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-              </radialGradient>
-              <linearGradient id="disc-slate-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#556066"/>
-                <stop offset="50%" stop-color="#424c52"/>
-                <stop offset="100%" stop-color="#2e353a"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="170" cy="142" rx="142" ry="28" fill="url(#shadow-2)"/>
-            <path d="M 32,68 A 138,42 0 0,0 308,68 v 18 A 138,42 0 0,1 32,86 Z" fill="#24292d"/>
-            <ellipse cx="170" cy="68" rx="138" ry="42" fill="url(#disc-slate-grad)"/>
-            <ellipse cx="170" cy="66" rx="130" ry="38" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>
-            <ellipse cx="170" cy="68" rx="98" ry="27" fill="#2c3338" stroke="rgba(0,0,0,0.3)" stroke-width="1.5"/>
-            <text x="170" y="70" text-anchor="middle" class="disc-text-title">PARKING AREA</text>
-            <text x="170" y="85" text-anchor="middle" class="disc-text-sub">UTILITY • NODE 8</text>
-          </svg>
-          <div class="disc-step-badge">2</div>
-        </div>
-
-        <!-- Disc 3: Slate Steel Blue (Library Core) -->
-        <div class="floating-disc-wrap disc-pos-3" data-id="library" data-name="Library">
-          <svg viewBox="0 0 340 180" class="disc-svg">
-            <defs>
-              <radialGradient id="shadow-3" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.38)"/>
-                <stop offset="60%" stop-color="rgba(0,0,0,0.12)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-              </radialGradient>
-              <linearGradient id="disc-blue-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#738d9c"/>
-                <stop offset="50%" stop-color="#587483"/>
-                <stop offset="100%" stop-color="#3d5461"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="170" cy="142" rx="142" ry="28" fill="url(#shadow-3)"/>
-            <path d="M 32,68 A 138,42 0 0,0 308,68 v 18 A 138,42 0 0,1 32,86 Z" fill="#324550"/>
-            <ellipse cx="170" cy="68" rx="138" ry="42" fill="url(#disc-blue-grad)"/>
-            <ellipse cx="170" cy="66" rx="130" ry="38" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>
-            <ellipse cx="170" cy="68" rx="98" ry="27" fill="#46606d" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
-            <text x="170" y="70" text-anchor="middle" class="disc-text-title">LIBRARY</text>
-            <text x="170" y="85" text-anchor="middle" class="disc-text-sub">ACADEMIC • NODE 2</text>
-          </svg>
-          <div class="disc-step-badge">3</div>
-        </div>
-
-        <!-- Disc 4: Warm Terracotta / Clay Amber (Admin Block) -->
-        <div class="floating-disc-wrap disc-pos-4" data-id="admin-block" data-name="Admin Block">
-          <svg viewBox="0 0 340 180" class="disc-svg">
-            <defs>
-              <radialGradient id="shadow-4" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.35)"/>
-                <stop offset="60%" stop-color="rgba(0,0,0,0.1)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-              </radialGradient>
-              <linearGradient id="disc-terracotta-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#d67b45"/>
-                <stop offset="50%" stop-color="#b85f2c"/>
-                <stop offset="100%" stop-color="#8e441c"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="170" cy="142" rx="142" ry="28" fill="url(#shadow-4)"/>
-            <path d="M 32,68 A 138,42 0 0,0 308,68 v 18 A 138,42 0 0,1 32,86 Z" fill="#783816"/>
-            <ellipse cx="170" cy="68" rx="138" ry="42" fill="url(#disc-terracotta-grad)"/>
-            <ellipse cx="170" cy="66" rx="130" ry="38" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.2"/>
-            <ellipse cx="170" cy="68" rx="98" ry="27" fill="#a45224" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
-            <text x="170" y="70" text-anchor="middle" class="disc-text-title">ADMIN BLOCK</text>
-            <text x="170" y="85" text-anchor="middle" class="disc-text-sub">ADMINISTRATION • NODE 7</text>
-          </svg>
-          <div class="disc-step-badge">4</div>
-        </div>
-
-        <!-- Disc 5: Ceramic White / Pearl (CSE Block) -->
-        <div class="floating-disc-wrap disc-pos-5" data-id="cs-block" data-name="CSE Block">
-          <svg viewBox="0 0 340 180" class="disc-svg">
-            <defs>
-              <radialGradient id="shadow-5" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="rgba(0,0,0,0.3)"/>
-                <stop offset="60%" stop-color="rgba(0,0,0,0.08)"/>
-                <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-              </radialGradient>
-              <linearGradient id="disc-white-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#ffffff"/>
-                <stop offset="50%" stop-color="#e3e6e8"/>
-                <stop offset="100%" stop-color="#bcc2c7"/>
-              </linearGradient>
-            </defs>
-            <ellipse cx="170" cy="142" rx="142" ry="28" fill="url(#shadow-5)"/>
-            <path d="M 32,68 A 138,42 0 0,0 308,68 v 18 A 138,42 0 0,1 32,86 Z" fill="#9da4aa"/>
-            <ellipse cx="170" cy="68" rx="138" ry="42" fill="url(#disc-white-grad)"/>
-            <ellipse cx="170" cy="66" rx="130" ry="38" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.2"/>
-            <ellipse cx="170" cy="68" rx="98" ry="27" fill="#f0f2f4" stroke="rgba(0,0,0,0.12)" stroke-width="1.5"/>
-            <text x="170" y="70" text-anchor="middle" class="disc-text-title text-dark">CSE BLOCK</text>
-            <text x="170" y="85" text-anchor="middle" class="disc-text-sub text-dark">ENGINEERING • NODE 1</text>
-          </svg>
-          <div class="disc-step-badge">5</div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- =====================================================================
-         VIEW 2: Full 2D Schematic Campus Map
-         ===================================================================== -->
-    <section class="spatial-view-section" id="view-schematic" style="display: none;">
-      <div class="schematic-map-container">
-        <div class="schematic-toolbar">
-          <div class="schematic-info">
-            <span class="schematic-title">Interactive Campus Schematic</span>
-            <span class="schematic-tag">10 Vertices • 16 Walkways</span>
+        <div class="presets-section">
+          <span class="presets-header">POPULAR SHORTCUTS</span>
+          <div class="preset-chips">
+            <button type="button" class="chip-preset" data-src="main-gate" data-dst="library">Gate → Library</button>
+            <button type="button" class="chip-preset" data-src="academic-block" data-dst="cs-block">Academic → CS</button>
+            <button type="button" class="chip-preset" data-src="hostel" data-dst="canteen">Hostel → Canteen</button>
+            <button type="button" class="chip-preset" data-src="parking-area" data-dst="auditorium">Parking → Auditorium</button>
           </div>
-          <div class="schematic-tools">
-            <button type="button" class="btn-tool" id="btn-zoom-in" title="Zoom In">+</button>
-            <button type="button" class="btn-tool" id="btn-zoom-out" title="Zoom Out">−</button>
-            <button type="button" class="btn-tool" id="btn-reset-view" title="Reset View">⟲</button>
+        </div>
+      </section>
+
+      <!-- Live Results & Telemetry Card -->
+      <section class="dock-card telemetry-card">
+        <div class="card-header">
+          <div class="header-title-wrap">
+            <span class="card-kicker">ALGORITHM OUTPUT</span>
+            <h3 class="card-title">Optimal Trajectory</h3>
+          </div>
+          <span class="status-verified-badge" id="route-verified-badge">Dijkstra Guaranteed</span>
+        </div>
+
+        <!-- Metric HUD Grid -->
+        <div class="metrics-grid">
+          <div class="metric-box box-highlight">
+            <span class="metric-label">TOTAL WALKING DISTANCE</span>
+            <span class="metric-huge" id="display-distance">450 <span class="metric-unit">m</span></span>
+            <span class="metric-sub">Mathematically Proven</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="metric-label">ESTIMATED WALKING</span>
+            <span class="metric-huge" id="display-time">~5.5 <span class="metric-unit">min</span></span>
+            <span class="metric-sub">Pace: 1.35 m/s</span>
           </div>
         </div>
 
+        <!-- Priority Queue State Visualizer -->
+        <div class="pq-visualizer-box">
+          <div class="pq-header">
+            <span>MIN-HEAP VISITED QUEUE</span>
+            <span class="pq-latency" id="queue-latency-badge">&lt; 0.05 ms</span>
+          </div>
+          <div class="pq-pills-row" id="queue-visited-pills">
+            <span class="pq-pill is-active">0. Main Gate</span>
+            <span class="pq-pill">7. Admin Block</span>
+            <span class="pq-pill is-target">2. Library</span>
+          </div>
+        </div>
+
+        <!-- Ordered Waypoint Itinerary Timeline -->
+        <div class="itinerary-timeline-wrap">
+          <span class="itinerary-title">TURN-BY-TURN WAYPOINTS</span>
+          <ol class="itinerary-list" id="itinerary-timeline">
+            <!-- Dynamically populated -->
+          </ol>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Side Map / Terminal Stage -->
+    <section class="stage-viewport">
+      
+      <!-- Interactive SVG Map Canvas Frame -->
+      <div class="map-viewport-frame" id="viewport-map">
+        <!-- Overlay Map Toolbar -->
+        <div class="map-overlay-bar">
+          <div class="map-meta-tags">
+            <span class="meta-tag meta-tag-bold">CAMPUS SCHEMATIC</span>
+            <span class="meta-tag">10 Vertices • 16 Walkways</span>
+            <span class="meta-tag">1:500 Topographic</span>
+          </div>
+
+          <div class="map-controls">
+            <button type="button" class="btn-map-control" id="btn-zoom-in" title="Zoom In">+</button>
+            <button type="button" class="btn-map-control" id="btn-zoom-out" title="Zoom Out">−</button>
+            <button type="button" class="btn-map-control" id="btn-reset-view" title="Reset View">⟲</button>
+          </div>
+        </div>
+
+        <!-- SVG Map Container -->
         <div class="svg-map-wrapper" id="map-scroll-container">
-          <svg id="campus-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid meet">
+          <svg id="campus-svg" viewBox="0 0 1280 820" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <filter id="neon-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <!-- Glowing Conduit Path Filters -->
+              <filter id="route-neon-glow" x="-30%" y="-30%" width="160%" height="160%">
                 <feGaussianBlur stdDeviation="6" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
               </filter>
-              <linearGradient id="path-active-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#0066ff" />
-                <stop offset="50%" stop-color="#00cc88" />
-                <stop offset="100%" stop-color="#0066ff" />
+
+              <!-- Gradient for Active Shortest Path -->
+              <linearGradient id="active-path-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" />
+                <stop offset="50%" stop-color="#10b981" />
+                <stop offset="100%" stop-color="#38bdf8" />
               </linearGradient>
+
+              <!-- Subtle Grid Background Pattern -->
+              <pattern id="campus-subgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.025)" stroke-width="1"/>
+              </pattern>
             </defs>
-            <rect width="1200" height="800" fill="#f8f9fa" />
+
+            <!-- Background Fill & Grid -->
+            <rect width="1280" height="820" fill="#070a14" />
+            <rect width="1280" height="820" fill="url(#campus-subgrid)" />
+
+            <!-- Landscape & Aesthetic Zones -->
             <g id="campus-landscape"></g>
+
+            <!-- Static Walkway Conduits (|E| = 16) -->
             <g id="campus-pathways-group" class="pathways-layer"></g>
+
+            <!-- Dynamic Active Shortest Path Polyline -->
             <g id="active-route-layer">
-              <path id="route-path-glow" d="" fill="none" stroke="#0066ff" stroke-width="12" stroke-linecap="round" opacity="0" filter="url(#neon-glow)" />
-              <path id="route-path-line" d="" fill="none" stroke="url(#path-active-gradient)" stroke-width="6" stroke-linecap="round" opacity="0" />
+              <path id="route-path-glow" d="" fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0" filter="url(#route-neon-glow)" />
+              <path id="route-path-line" d="" fill="none" stroke="url(#active-path-gradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0" />
             </g>
+
+            <!-- Architectural Building Nodes (|V| = 10) -->
             <g id="campus-nodes-group" class="nodes-layer"></g>
           </svg>
 
           <!-- Interactive Tooltip -->
           <div class="map-tooltip" id="map-tooltip">
-            <div class="tooltip-header">
-              <span class="tooltip-badge" id="tooltip-category">CATEGORY</span>
-              <span class="tooltip-action" id="tooltip-action">CLICK TO SELECT</span>
-            </div>
+            <div class="tooltip-badge" id="tooltip-category">CATEGORY</div>
             <div class="tooltip-title" id="tooltip-title">Location Name</div>
-            <div class="tooltip-desc" id="tooltip-desc">Building description and facility info.</div>
+            <div class="tooltip-desc" id="tooltip-desc">Building description and metadata.</div>
+          </div>
+        </div>
+
+        <!-- Map Footer Legend -->
+        <div class="map-footer-legend">
+          <div class="legend-chip">
+            <span class="legend-color-dot dot-cyan"></span>
+            <span>Origin (#A)</span>
+          </div>
+          <div class="legend-chip">
+            <span class="legend-color-dot dot-emerald"></span>
+            <span>Target (#B)</span>
+          </div>
+          <div class="legend-chip">
+            <span class="legend-color-dot dot-glow"></span>
+            <span>Dijkstra Shortest Route</span>
+          </div>
+          <div class="legend-chip">
+            <span class="legend-color-dot dot-walkway"></span>
+            <span>Walkway (Distance in Metres)</span>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- =====================================================================
-         VIEW 3: Embedded Terminal CLI View
-         ===================================================================== -->
-    <section class="spatial-view-section" id="view-terminal" style="display: none;">
-      <div class="terminal-container">
-        <div class="terminal-topbar">
-          <div class="t-dots">
-            <span class="t-dot t-red"></span>
-            <span class="t-dot t-yellow"></span>
-            <span class="t-dot t-green"></span>
+      <!-- Embedded Terminal CLI View Frame -->
+      <div class="terminal-viewport-frame" id="viewport-terminal" style="display: none;">
+        <div class="terminal-window-card">
+          <div class="terminal-header-bar">
+            <div class="mac-window-dots">
+              <span class="m-dot m-red"></span>
+              <span class="m-dot m-yellow"></span>
+              <span class="m-dot m-green"></span>
+            </div>
+            <span class="terminal-app-title">bash — campuspath@engine (port 8080)</span>
+            <button type="button" class="btn-copy-command" id="btn-copy-cli">Copy Command</button>
           </div>
-          <span class="t-title">bash — campuspath@engine</span>
-          <button type="button" class="t-copy-btn" id="btn-copy-cli">Copy Command</button>
-        </div>
-        <div class="terminal-screen" id="terminal-body">
-          <pre><code><span class="t-prompt">$</span> ./campuspath <span class="t-yellow">"Main Gate"</span> <span class="t-yellow">"Library"</span>
+          
+          <div class="terminal-screen-output" id="terminal-body">
+            <pre><code><span class="t-prompt">$</span> ./campuspath <span class="t-yellow">"Main Gate"</span> <span class="t-yellow">"Central Library"</span>
 
 <span class="t-cyan">======================================================</span>
 <span class="t-bold">           OPTIMAL CAMPUS ROUTE (DIJKSTRA)            </span>
 <span class="t-cyan">======================================================</span>
   Origin:      Main Gate [ID: 0]
-  Destination: Library [ID: 2]
+  Destination: Central Library [ID: 2]
 ------------------------------------------------------
   Total Distance: 450 metres
   Total Stops:    3 landmarks
@@ -397,35 +302,30 @@
 ------------------------------------------------------
   TURN-BY-TURN WAYFINDING:
 
-    <span class="t-green">[Start]</span>   Main Gate (Entrance)
+    <span class="t-green">[Start]</span>   Main Gate (Access &amp; Security)
         |   + 250m (Walk along campus pathway)
     <span class="t-yellow">[Hop 1]</span>   Admin Block (Administration)  [Cumulative: 250m]
         |   + 200m (Walk along campus pathway)
-    <span class="t-green">[Arrive]</span>  Library (Academic)  [Cumulative: 450m]
+    <span class="t-green">[Arrive]</span>  Central Library (Academic Core)  [Cumulative: 450m]
 
 ------------------------------------------------------
-  ADSA COMPLEXITY & GUARANTEES:
+  ADSA COMPLEXITY &amp; GUARANTEES:
     - Algorithm:         Dijkstra's Single-Source Shortest Path
     - Data Structure:    Adjacency List + Min-Heap Priority Queue
     - Time Complexity:   O((V + E) log V)
     - Space Complexity:  O(V + E)
     - Optimality:        Mathematically proven shortest path
 <span class="t-cyan">======================================================</span></code></pre>
-        </div>
-        <div class="terminal-quick-actions">
-          <button type="button" class="btn-t-action" id="btn-terminal-benchmark">Run 10,000 Benchmark</button>
-          <button type="button" class="btn-t-action" id="btn-terminal-list-locations">List All Vertices</button>
+          </div>
+
+          <div class="terminal-actions-footer">
+            <button type="button" class="btn-cli-action" id="btn-terminal-benchmark">Run 10,000-Query Benchmark</button>
+            <button type="button" class="btn-cli-action" id="btn-terminal-list-locations">List All Campus Nodes</button>
+          </div>
         </div>
       </div>
+
     </section>
-
-    <!-- Bottom Slider Dots (Matching Reference Photo!) -->
-    <div class="card-bottom-pagination">
-      <span class="page-dash active" id="dot-objects"></span>
-      <span class="page-dot" id="dot-schematic"></span>
-      <span class="page-dot" id="dot-terminal"></span>
-    </div>
-
   </main>
 
   <!-- Notification Toast Container -->

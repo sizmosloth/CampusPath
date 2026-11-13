@@ -154,41 +154,9 @@ int main() {
     });
 
     // ----------------------------------------------------
-    // POST /api/shortest-path
-    // Calculates the shortest walking route using Dijkstra
+    // Shared Shortest-Path Computation Core
     // ----------------------------------------------------
-    svr.Post("/api/shortest-path", [&campusMap](const httplib::Request& req, httplib::Response& res) {
-        std::cout << "[API] POST /api/shortest-path - Body: " << req.body << "\n";
-
-        // Parse JSON payload
-        json reqJson;
-        try {
-            reqJson = json::parse(req.body);
-        } catch (const json::parse_error&) {
-            applyCORSHeaders(res);
-            res.status = 400;
-            res.set_content(json({
-                {"success", false},
-                {"error", "Malformed JSON payload: invalid JSON syntax."}
-            }).dump(2), "application/json");
-            return;
-        }
-
-        // Validate presence and types of source and destination
-        if (!reqJson.contains("source") || !reqJson.contains("destination") ||
-            !reqJson["source"].is_number_integer() || !reqJson["destination"].is_number_integer()) {
-            applyCORSHeaders(res);
-            res.status = 400;
-            res.set_content(json({
-                {"success", false},
-                {"error", "Invalid request: 'source' and 'destination' integer fields are required."}
-            }).dump(2), "application/json");
-            return;
-        }
-
-        int sourceId = reqJson["source"].get<int>();
-        int destId = reqJson["destination"].get<int>();
-
+    auto solveShortestRoute = [&campusMap](int sourceId, int destId, httplib::Response& res) {
         const auto* sourceNode = campusMap.getNodeById(sourceId);
         const auto* destNode = campusMap.getNodeById(destId);
 
@@ -302,6 +270,111 @@ int main() {
         applyCORSHeaders(res);
         res.status = 200;
         res.set_content(responseJson.dump(2), "application/json");
+    };
+
+    // ----------------------------------------------------
+    // GET /api/shortest-path
+    // Query params: ?source=X&destination=Y or ?from=X&to=Y (IDs or Names)
+    // ----------------------------------------------------
+    svr.Get("/api/shortest-path", [&campusMap, &solveShortestRoute](const httplib::Request& req, httplib::Response& res) {
+        std::string srcStr = req.has_param("source") ? req.get_param_value("source") : (req.has_param("from") ? req.get_param_value("from") : "");
+        std::string dstStr = req.has_param("destination") ? req.get_param_value("destination") : (req.has_param("to") ? req.get_param_value("to") : "");
+
+        if (srcStr.empty() || dstStr.empty()) {
+            applyCORSHeaders(res);
+            res.status = 400;
+            res.set_content(json({
+                {"success", false},
+                {"error", "Query parameters 'source'/'from' and 'destination'/'to' are required."}
+            }).dump(2), "application/json");
+            return;
+        }
+
+        int sourceId = -1;
+        int destId = -1;
+
+        try {
+            sourceId = std::stoi(srcStr);
+        } catch (...) {
+            const auto* sNode = campusMap.getNodeByName(srcStr);
+            if (sNode) sourceId = sNode->id;
+        }
+
+        try {
+            destId = std::stoi(dstStr);
+        } catch (...) {
+            const auto* dNode = campusMap.getNodeByName(dstStr);
+            if (dNode) destId = dNode->id;
+        }
+
+        if (sourceId < 0 || destId < 0) {
+            applyCORSHeaders(res);
+            res.status = 404;
+            res.set_content(json({
+                {"success", false},
+                {"error", "One or both specified locations could not be resolved."}
+            }).dump(2), "application/json");
+            return;
+        }
+
+        solveShortestRoute(sourceId, destId, res);
+    });
+
+    // ----------------------------------------------------
+    // POST /api/shortest-path
+    // Calculates the shortest walking route using Dijkstra
+    // ----------------------------------------------------
+    svr.Post("/api/shortest-path", [&campusMap, &solveShortestRoute](const httplib::Request& req, httplib::Response& res) {
+        std::cout << "[API] POST /api/shortest-path - Body: " << req.body << "\n";
+
+        // Parse JSON payload
+        json reqJson;
+        try {
+            reqJson = json::parse(req.body);
+        } catch (const json::parse_error&) {
+            applyCORSHeaders(res);
+            res.status = 400;
+            res.set_content(json({
+                {"success", false},
+                {"error", "Malformed JSON payload: invalid JSON syntax."}
+            }).dump(2), "application/json");
+            return;
+        }
+
+        int sourceId = -1;
+        int destId = -1;
+
+        if (reqJson.contains("source") && reqJson["source"].is_number_integer()) {
+            sourceId = reqJson["source"].get<int>();
+        } else if (reqJson.contains("source") && reqJson["source"].is_string()) {
+            const auto* sNode = campusMap.getNodeByName(reqJson["source"].get<std::string>());
+            if (sNode) sourceId = sNode->id;
+        } else if (reqJson.contains("from") && reqJson["from"].is_string()) {
+            const auto* sNode = campusMap.getNodeByName(reqJson["from"].get<std::string>());
+            if (sNode) sourceId = sNode->id;
+        }
+
+        if (reqJson.contains("destination") && reqJson["destination"].is_number_integer()) {
+            destId = reqJson["destination"].get<int>();
+        } else if (reqJson.contains("destination") && reqJson["destination"].is_string()) {
+            const auto* dNode = campusMap.getNodeByName(reqJson["destination"].get<std::string>());
+            if (dNode) destId = dNode->id;
+        } else if (reqJson.contains("to") && reqJson["to"].is_string()) {
+            const auto* dNode = campusMap.getNodeByName(reqJson["to"].get<std::string>());
+            if (dNode) destId = dNode->id;
+        }
+
+        if (sourceId < 0 || destId < 0) {
+            applyCORSHeaders(res);
+            res.status = 400;
+            res.set_content(json({
+                {"success", false},
+                {"error", "Invalid request: 'source' and 'destination' fields are required."}
+            }).dump(2), "application/json");
+            return;
+        }
+
+        solveShortestRoute(sourceId, destId, res);
     });
 
     const std::string host = "127.0.0.1";
