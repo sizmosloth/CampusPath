@@ -1,7 +1,6 @@
 /**
- * CampusPath – High-Performance Architectural Campus Map Module
- * Pure SVG, zero lag, hardware-accelerated 60 FPS rendering
- * Complete Cyber-Architectural HUD & Luxury Spatial Schematic
+ * CampusPath – Minimalist Architectural Campus Map Module
+ * Pure SVG, Apple Light Aesthetic, zero lag, hardware-accelerated
  */
 
 (function (window) {
@@ -14,7 +13,7 @@
 
   /**
    * Official Campus Landmark Vertices (|V| = 10)
-   * Perfectly spaced across 1280x820 canvas to prevent any text clipping or overlap
+   * Spaced cleanly on 1280x820 canvas
    */
   const CAMPUS_LOCATIONS = [
     {
@@ -24,13 +23,12 @@
       x: 160,
       y: 680,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Entrance',
       code: 'MG',
-      icon: '🚪',
-      accentColor: '#38bdf8',
-      sub: 'Security & Transit Hub',
-      description: 'Primary campus entrance, visitor verification checkpoint and shuttle bay.'
+      accentColor: '#0071e3', // Apple Blue
+      sub: 'Main Entrance & Security',
+      description: 'Primary campus entrance, visitor verification checkpoint and transit hub.'
     },
     {
       id: 'parking-area',
@@ -39,11 +37,10 @@
       x: 160,
       y: 260,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Transit',
       code: 'PK',
-      icon: '🅿️',
-      accentColor: '#10b981',
+      accentColor: '#34c759', // Apple Green
       sub: 'EV Charging & Multi-Bay',
       description: 'Multi-level vehicular parking with 24 fast EV charging stations.'
     },
@@ -54,12 +51,11 @@
       x: 420,
       y: 550,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Administration',
       code: 'AD',
-      icon: '🏛️',
-      accentColor: '#f59e0b',
-      sub: 'Registrar & Affairs',
+      accentColor: '#ff9500', // Apple Orange
+      sub: 'Registrar & Student Affairs',
       description: 'Directorate, Dean of Academic Affairs, Admissions, and Finance.'
     },
     {
@@ -69,13 +65,12 @@
       x: 420,
       y: 200,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Conventions',
       code: 'AU',
-      icon: '🎭',
-      accentColor: '#ec4899',
-      sub: '1,500-Seat Hall',
-      description: 'Acoustic amphitheater for national conventions, symposia, and culture.'
+      accentColor: '#af52de', // Apple Purple
+      sub: '1,500-Seat Amphitheater',
+      description: 'Acoustic hall for university conventions, symposia, and cultural events.'
     },
     {
       id: 'library',
@@ -84,13 +79,12 @@
       x: 670,
       y: 380,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Academic Core',
       code: 'LB',
-      icon: '📚',
-      accentColor: '#38bdf8',
-      sub: 'Digital Knowledge Hub',
-      description: 'Central knowledge repository, quiet research suites, and archives.'
+      accentColor: '#0071e3', // Apple Blue
+      sub: 'Knowledge & Study Suites',
+      description: 'Central library, quiet study suites, computer center, and digital archives.'
     },
     {
       id: 'academic-block',
@@ -99,11 +93,10 @@
       x: 670,
       y: 680,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Lectures',
       code: 'AC',
-      icon: '🎓',
-      accentColor: '#06b6d4',
+      accentColor: '#5ac8fa', // Apple Teal
       sub: 'Tiered Lecture Theaters',
       description: 'Multidisciplinary lecture complexes and faculty departments.'
     },
@@ -114,12 +107,11 @@
       x: 920,
       y: 200,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Dining & Social',
       code: 'CN',
-      icon: '☕',
-      accentColor: '#f97316',
-      sub: 'Food Court & Lounge',
+      accentColor: '#ff9500', // Apple Orange
+      sub: 'Food Court & Cafe',
       description: 'Dining hall, outdoor garden cafe, coffee bar, and student commons.'
     },
     {
@@ -129,13 +121,12 @@
       x: 920,
       y: 470,
       width: 176,
-      height: 76,
-      category: 'Engineering & AI',
+      height: 72,
+      category: 'Engineering & CS',
       code: 'CS',
-      icon: '💻',
-      accentColor: '#8b5cf6',
-      sub: 'Robotics & HPC Labs',
-      description: 'High-performance computing cluster, AI robotics labs and departmental core.'
+      accentColor: '#5856d6', // Apple Indigo
+      sub: 'Computing & AI Labs',
+      description: 'Supercomputing center, AI robotics labs, and departmental complexes.'
     },
     {
       id: 'hostel',
@@ -144,13 +135,12 @@
       x: 1130,
       y: 220,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Residential',
       code: 'HS',
-      icon: '🏠',
-      accentColor: '#a855f7',
-      sub: 'Student Living Towers',
-      description: 'Residential towers, recreational lounges, gym, and dining hall.'
+      accentColor: '#af52de', // Apple Purple
+      sub: 'Student Residential Towers',
+      description: 'Residential towers, recreational lounges, and student amenities.'
     },
     {
       id: 'sports-ground',
@@ -159,19 +149,17 @@
       x: 1130,
       y: 620,
       width: 176,
-      height: 76,
+      height: 72,
       category: 'Athletics',
       code: 'SG',
-      icon: '⚽',
-      accentColor: '#10b981',
-      sub: 'Turf Pitch & Tracks',
+      accentColor: '#34c759', // Apple Green
+      sub: 'Running Track & Turf Pitch',
       description: 'Synthetic running track, full grass soccer pitch, and tennis courts.'
     }
   ];
 
   /**
    * 16 Official Walkways with Exact Distances (|E| = 16)
-   * Matches backend/data/edges.csv exactly
    */
   const CAMPUS_PATHWAYS = [
     { from: 'main-gate', to: 'admin-block', distance: 250 },
@@ -240,7 +228,7 @@
   }
 
   // =========================================================================
-  // 2. Landscape & Zones
+  // 2. Landscape & Zones (Clean Minimal Light)
   // =========================================================================
 
   function renderLandscapeZones() {
@@ -249,16 +237,16 @@
 
     landscapeG.innerHTML = `
       <!-- Sports Pitch Turf -->
-      <rect x="1040" y="560" width="180" height="120" rx="16" fill="rgba(16, 185, 129, 0.06)" stroke="rgba(16, 185, 129, 0.22)" stroke-width="1.5" stroke-dasharray="6 4" />
-      <circle cx="1130" cy="620" r="32" fill="none" stroke="rgba(16, 185, 129, 0.2)" stroke-width="1.2" />
-      <line x1="1040" y1="620" x2="1220" y2="620" stroke="rgba(16, 185, 129, 0.2)" stroke-width="1.2" />
+      <rect x="1040" y="560" width="180" height="120" rx="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.2" stroke-dasharray="5 3" />
+      <circle cx="1130" cy="620" r="28" fill="none" stroke="#86efac" stroke-width="1" />
+      <line x1="1040" y1="620" x2="1220" y2="620" stroke="#86efac" stroke-width="1" />
 
-      <!-- Central Library Plaza -->
-      <circle cx="670" cy="380" r="115" fill="rgba(56, 189, 248, 0.03)" stroke="rgba(56, 189, 248, 0.12)" stroke-width="1" stroke-dasharray="4 4" />
-      <circle cx="670" cy="380" r="145" fill="none" stroke="rgba(56, 189, 248, 0.06)" stroke-width="1" stroke-dasharray="2 6" />
+      <!-- Library Central Plaza -->
+      <circle cx="670" cy="380" r="110" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4 4" />
+      <circle cx="670" cy="380" r="140" fill="none" stroke="#edf2f7" stroke-width="1" stroke-dasharray="2 6" />
 
-      <!-- Boulevard Avenue -->
-      <path d="M 160 680 L 420 550 L 670 380 L 920 470 L 1130 620" fill="none" stroke="rgba(255, 255, 255, 0.025)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+      <!-- Boulevard Avenue Path -->
+      <path d="M 160 680 L 420 550 L 670 380 L 920 470 L 1130 620" fill="none" stroke="#f1f5f9" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
     `;
   }
 
@@ -308,7 +296,7 @@
       badgeG.setAttribute('transform', `translate(${midX}, ${midY})`);
 
       badgeG.innerHTML = `
-        <rect x="-24" y="-11" width="48" height="22" rx="11" class="edge-badge-rect" />
+        <rect x="-22" y="-10" width="44" height="20" rx="10" class="edge-badge-rect" />
         <text x="0" y="4" text-anchor="middle" class="edge-badge-text">${edge.distance}m</text>
       `;
 
@@ -321,7 +309,7 @@
   }
 
   // =========================================================================
-  // 4. Architectural Building Nodes
+  // 4. Architectural Building Nodes (Apple Light Style)
   // =========================================================================
 
   function renderArchitecturalNodes() {
@@ -341,35 +329,27 @@
       nodeG.setAttribute('data-name', loc.name);
 
       nodeG.innerHTML = `
-        <!-- Elevation Drop Shadow -->
-        <rect x="${bx + 4}" y="${by + 6}" width="${loc.width - 8}" height="${loc.height - 4}" rx="14" class="node-shadow" />
+        <!-- Soft Card Drop Shadow -->
+        <rect x="${bx + 2}" y="${by + 3}" width="${loc.width - 4}" height="${loc.height}" rx="12" class="node-shadow" />
 
         <!-- Card Chassis Body -->
-        <rect x="${bx}" y="${by}" width="${loc.width}" height="${loc.height}" rx="14" class="node-chassis" />
+        <rect x="${bx}" y="${by}" width="${loc.width}" height="${loc.height}" rx="12" class="node-chassis" />
 
-        <!-- Accent Top Bar -->
-        <rect x="${bx + 1}" y="${by + 1}" width="${loc.width - 2}" height="4" rx="2" class="node-accent-bar" style="fill: ${loc.accentColor};" />
+        <!-- Left Accent Color Indicator -->
+        <rect x="${bx}" y="${by}" width="4" height="${loc.height}" rx="2" class="node-accent-bar" style="fill: ${loc.accentColor};" />
 
-        <!-- Top Header Row: Icon Circle + Category Tag + ID Badge -->
-        <circle cx="${bx + 20}" cy="${by + 20}" r="11" class="node-icon-bg" />
-        <text x="${bx + 20}" y="${by + 24}" text-anchor="middle" class="node-emoji">${loc.icon}</text>
+        <!-- Category Tag -->
+        <text x="${bx + 14}" y="${by + 20}" class="node-category">${loc.category.toUpperCase()}</text>
 
-        <text x="${bx + 37}" y="${by + 23}" class="node-category">${loc.category.toUpperCase()}</text>
-
-        <rect x="${bx + loc.width - 32}" y="${by + 11}" width="22" height="15" rx="4" class="node-id-badge" />
-        <text x="${bx + loc.width - 21}" y="${by + 22}" text-anchor="middle" class="node-id-text">#${loc.backendId}</text>
+        <!-- ID Badge Pill -->
+        <rect x="${bx + loc.width - 32}" y="${by + 10}" width="22" height="15" rx="4" class="node-id-badge" />
+        <text x="${bx + loc.width - 21}" y="${by + 21}" text-anchor="middle" class="node-id-text">#${loc.backendId}</text>
 
         <!-- Main Building Title -->
-        <text x="${bx + 16}" y="${by + 46}" class="node-title">${loc.name}</text>
+        <text x="${bx + 14}" y="${by + 42}" class="node-title">${loc.name}</text>
 
         <!-- Subtitle Information -->
-        <text x="${bx + 16}" y="${by + 62}" class="node-sub">${loc.sub}</text>
-
-        <!-- Floating Beacon Pin Halo for Active Selection -->
-        <g class="node-beacon-group" transform="translate(${loc.x}, ${by - 12})">
-          <circle cx="0" cy="0" r="16" class="beacon-pulse" />
-          <circle cx="0" cy="0" r="5" class="beacon-core" />
-        </g>
+        <text x="${bx + 14}" y="${by + 58}" class="node-sub">${loc.sub}</text>
       `;
 
       // Click event for interactive route selection
@@ -420,23 +400,19 @@
       if (seg2) seg2.classList.add('is-active');
     }
 
-    // 2. Draw Continuous Glowing Polyline
+    // 2. Draw Clean Solid Route Path
     const line = document.getElementById('route-path-line');
-    const glow = document.getElementById('route-path-glow');
-
     let d = '';
     resolved.forEach((n, idx) => {
       d += (idx === 0 ? `M ${n.x} ${n.y} ` : `L ${n.x} ${n.y} `);
     });
 
-    if (line && glow) {
-      glow.setAttribute('d', d);
+    if (line) {
       line.setAttribute('d', d);
-      glow.style.opacity = '0.9';
       line.style.opacity = '1';
     }
 
-    // 3. Activate Node Badges
+    // 3. Highlight Node Cards
     resolved.forEach((n, idx) => {
       const nodeEl = document.getElementById(`node-${n.id}`);
       if (!nodeEl) return;
@@ -457,9 +433,7 @@
     activeRouteIds = [];
 
     const line = document.getElementById('route-path-line');
-    const glow = document.getElementById('route-path-glow');
     if (line) { line.setAttribute('d', ''); line.style.opacity = '0'; }
-    if (glow) { glow.setAttribute('d', ''); glow.style.opacity = '0'; }
 
     document.querySelectorAll('.walkway-segment.is-active').forEach(s => s.classList.remove('is-active'));
     document.querySelectorAll('.campus-node-card').forEach(n => {
@@ -483,7 +457,7 @@
       return;
     }
 
-    const stepMs = 380;
+    const stepMs = 340;
     visitedOrder.forEach((idOrNum, idx) => {
       const tid = setTimeout(() => {
         const loc = getLocation(idOrNum);
@@ -500,7 +474,7 @@
           const finTid = setTimeout(() => {
             highlightRoute(finalRoute);
             if (onFinish) onFinish();
-          }, 300);
+          }, 250);
           simTimeouts.push(finTid);
         }
       }, idx * stepMs);
@@ -616,8 +590,8 @@
           document.getElementById('tooltip-category').textContent = loc.category.toUpperCase();
           document.getElementById('tooltip-desc').textContent = loc.description;
 
-          tooltip.style.left = `${x + 15}px`;
-          tooltip.style.top = `${y + 15}px`;
+          tooltip.style.left = `${x + 14}px`;
+          tooltip.style.top = `${y + 14}px`;
           tooltip.classList.add('visible');
         }
       } else {

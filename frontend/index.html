@@ -3,324 +3,262 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CampusPath – Autonomous Graph Navigation & Shortest Path Engine</title>
+  <title>CampusPath — Campus Navigation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="app-body">
 
   <!-- =========================================================================
-       1. Top Modern App Header (Clean Apple/Nike Style - NO Fake Safari Bar)
+       1. Apple-Style Clean Top Header
        ========================================================================= -->
-  <header class="app-top-header">
+  <header class="app-header">
     <div class="header-left">
-      <div class="brand-badge">
-        <span class="brand-glyph">▲</span>
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </svg>
       </div>
-      <div class="brand-text">
-        <span class="brand-title">CampusPath</span>
-        <span class="brand-tag">ADSA PRO v2.4</span>
+      <div class="brand-info">
+        <h1 class="brand-title">CampusPath</h1>
+        <span class="brand-subtitle">Navigation Engine</span>
       </div>
     </div>
 
-    <!-- Center View Switcher Tabs -->
-    <nav class="header-nav-tabs">
-      <button type="button" class="tab-link active" id="tab-nav-map" data-view="map-view">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
-        <span>Interactive Map</span>
+    <!-- Center Segmented View Switcher -->
+    <div class="segmented-control">
+      <button type="button" class="segment-btn active" id="tab-nav-map">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+        </svg>
+        <span>Campus Map</span>
       </button>
-      <button type="button" class="tab-link" id="tab-nav-terminal" data-view="terminal-view">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+      <button type="button" class="segment-btn" id="tab-nav-terminal">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
         <span>Terminal CLI</span>
       </button>
-    </nav>
+    </div>
 
-    <!-- Right Telemetry Chips -->
+    <!-- Right Server Status -->
     <div class="header-right">
-      <div class="status-chip" id="engine-status-chip">
-        <span class="status-live-dot"></span>
-        <span id="engine-status-text">C++ Engine 8080 Active</span>
-      </div>
-      <div class="complexity-chip" title="Dijkstra Min-Heap Time Complexity">
-        <span>O((V + E) log V)</span>
+      <div class="server-status" id="server-status-pill">
+        <span class="status-dot"></span>
+        <span id="server-status-label">C++ Engine Online (8080)</span>
       </div>
     </div>
   </header>
 
   <!-- =========================================================================
-       2. Main Interactive Stage (2-Column Studio Dashboard)
+       2. Main Clean Layout
        ========================================================================= -->
-  <main class="app-main-layout">
+  <main class="app-main">
 
-    <!-- Left Navigation & Telemetry Dock -->
-    <aside class="control-dock">
+    <!-- Left Clean Control Sidebar -->
+    <aside class="sidebar">
       
-      <!-- Primary Route Planner Card -->
-      <section class="dock-card route-card">
-        <div class="card-header">
-          <div class="header-title-wrap">
-            <span class="card-kicker">WAYFINDING CORE</span>
-            <h2 class="card-title">Route Planner</h2>
-          </div>
-          <span class="metric-pill" id="badge-hops">Standby</span>
-        </div>
+      <!-- Route Selection Card -->
+      <section class="card route-card">
+        <h2 class="card-heading">Find Route</h2>
 
         <form class="route-form" onsubmit="return false;">
-          <!-- Origin Selector -->
-          <div class="input-block">
-            <div class="input-label-row">
-              <span class="pin-dot pin-origin"></span>
-              <label for="source-select">Starting Landmark (Origin)</label>
-            </div>
-            <div class="select-field">
-              <select id="source-select" aria-label="Select Starting Point">
-                <!-- Dynamically populated via map.js -->
+          <!-- Origin -->
+          <div class="field-group">
+            <label for="source-select" class="field-label">
+              <span class="dot-indicator dot-start"></span>
+              <span>Start</span>
+            </label>
+            <div class="select-wrapper">
+              <select id="source-select" aria-label="Starting location">
+                <!-- Populated dynamically -->
               </select>
-              <span class="select-arrow">▾</span>
             </div>
           </div>
 
-          <!-- Swap Button Row -->
-          <div class="swap-row">
-            <div class="swap-line"></div>
-            <button type="button" class="btn-swap-endpoints" id="btn-swap-locations" title="Swap Origin & Destination">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"></path></svg>
+          <!-- Swap Button -->
+          <div class="swap-divider">
+            <button type="button" class="btn-swap" id="btn-swap-locations" title="Swap locations">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"></path>
+              </svg>
             </button>
-            <div class="swap-line"></div>
           </div>
 
-          <!-- Destination Selector -->
-          <div class="input-block">
-            <div class="input-label-row">
-              <span class="pin-dot pin-dest"></span>
-              <label for="dest-select">Target Landmark (Destination)</label>
-            </div>
-            <div class="select-field">
-              <select id="dest-select" aria-label="Select Target Destination">
-                <!-- Dynamically populated via map.js -->
+          <!-- Destination -->
+          <div class="field-group">
+            <label for="dest-select" class="field-label">
+              <span class="dot-indicator dot-end"></span>
+              <span>Destination</span>
+            </label>
+            <div class="select-wrapper">
+              <select id="dest-select" aria-label="Destination location">
+                <!-- Populated dynamically -->
               </select>
-              <span class="select-arrow">▾</span>
             </div>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="action-buttons-group">
-            <button type="button" class="btn-primary-action" id="btn-find-path">
-              <span>Find Shortest Path</span>
-              <span class="btn-arrow">→</span>
+          <!-- Actions -->
+          <div class="button-row">
+            <button type="button" class="btn-primary" id="btn-find-path">
+              Find Shortest Path
             </button>
-            <button type="button" class="btn-secondary-action" id="btn-animate-algorithm" title="Play Step-by-Step Greedy Priority Queue Search">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              <span>Animate Wave</span>
+            <button type="button" class="btn-secondary" id="btn-animate-algorithm" title="Play step-by-step search">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <polygon points="6 4 18 12 6 20 6 4"></polygon>
+              </svg>
+              <span>Play Steps</span>
             </button>
           </div>
         </form>
 
-        <!-- Quick Commute Presets -->
-        <div class="presets-section">
-          <span class="presets-header">POPULAR SHORTCUTS</span>
-          <div class="preset-chips">
-            <button type="button" class="chip-preset" data-src="main-gate" data-dst="library">Gate → Library</button>
-            <button type="button" class="chip-preset" data-src="academic-block" data-dst="cs-block">Academic → CS</button>
-            <button type="button" class="chip-preset" data-src="hostel" data-dst="canteen">Hostel → Canteen</button>
-            <button type="button" class="chip-preset" data-src="parking-area" data-dst="auditorium">Parking → Auditorium</button>
+        <!-- Quick Suggestions -->
+        <div class="quick-presets">
+          <span class="presets-title">Quick Shortcuts</span>
+          <div class="preset-pills">
+            <button type="button" class="pill-btn" data-src="main-gate" data-dst="library">Gate → Library</button>
+            <button type="button" class="pill-btn" data-src="academic-block" data-dst="cs-block">Academic → CS</button>
+            <button type="button" class="pill-btn" data-src="hostel" data-dst="canteen">Hostel → Canteen</button>
+            <button type="button" class="pill-btn" data-src="parking-area" data-dst="auditorium">Parking → Auditorium</button>
           </div>
         </div>
       </section>
 
-      <!-- Live Results & Telemetry Card -->
-      <section class="dock-card telemetry-card">
-        <div class="card-header">
-          <div class="header-title-wrap">
-            <span class="card-kicker">ALGORITHM OUTPUT</span>
-            <h3 class="card-title">Optimal Trajectory</h3>
-          </div>
-          <span class="status-verified-badge" id="route-verified-badge">Dijkstra Guaranteed</span>
+      <!-- Route Details Card -->
+      <section class="card details-card" id="details-card">
+        <div class="details-header">
+          <h3 class="card-heading">Shortest Route</h3>
+          <span class="badge-dijkstra">Dijkstra Optimal</span>
         </div>
 
-        <!-- Metric HUD Grid -->
-        <div class="metrics-grid">
-          <div class="metric-box box-highlight">
-            <span class="metric-label">TOTAL WALKING DISTANCE</span>
-            <span class="metric-huge" id="display-distance">450 <span class="metric-unit">m</span></span>
-            <span class="metric-sub">Mathematically Proven</span>
+        <div class="metrics-row">
+          <div class="metric-item">
+            <span class="metric-label">Total Distance</span>
+            <span class="metric-val" id="display-distance">450 <span class="metric-unit">m</span></span>
           </div>
-
-          <div class="metric-box">
-            <span class="metric-label">ESTIMATED WALKING</span>
-            <span class="metric-huge" id="display-time">~5.5 <span class="metric-unit">min</span></span>
-            <span class="metric-sub">Pace: 1.35 m/s</span>
+          <div class="metric-item">
+            <span class="metric-label">Walking Time</span>
+            <span class="metric-val" id="display-time">~5.5 <span class="metric-unit">min</span></span>
           </div>
         </div>
 
-        <!-- Priority Queue State Visualizer -->
-        <div class="pq-visualizer-box">
-          <div class="pq-header">
-            <span>MIN-HEAP VISITED QUEUE</span>
-            <span class="pq-latency" id="queue-latency-badge">&lt; 0.05 ms</span>
+        <!-- Visited Order (Clean minimal pills) -->
+        <div class="visited-section">
+          <div class="visited-header">
+            <span>Algorithm Visited Order</span>
+            <span class="visited-time" id="queue-latency-badge">45 µs</span>
           </div>
-          <div class="pq-pills-row" id="queue-visited-pills">
-            <span class="pq-pill is-active">0. Main Gate</span>
-            <span class="pq-pill">7. Admin Block</span>
-            <span class="pq-pill is-target">2. Library</span>
+          <div class="visited-pills" id="queue-visited-pills">
+            <!-- Dynamic -->
           </div>
         </div>
 
-        <!-- Ordered Waypoint Itinerary Timeline -->
-        <div class="itinerary-timeline-wrap">
-          <span class="itinerary-title">TURN-BY-TURN WAYPOINTS</span>
-          <ol class="itinerary-list" id="itinerary-timeline">
-            <!-- Dynamically populated -->
+        <!-- Turn-by-Turn Waypoint List -->
+        <div class="timeline-container">
+          <span class="timeline-heading">Turn-by-Turn Waypoints</span>
+          <ol class="timeline-list" id="itinerary-timeline">
+            <!-- Dynamic -->
           </ol>
         </div>
       </section>
+
     </aside>
 
-    <!-- Right Side Map / Terminal Stage -->
-    <section class="stage-viewport">
-      
-      <!-- Interactive SVG Map Canvas Frame -->
-      <div class="map-viewport-frame" id="viewport-map">
-        <!-- Overlay Map Toolbar -->
-        <div class="map-overlay-bar">
-          <div class="map-meta-tags">
-            <span class="meta-tag meta-tag-bold">CAMPUS SCHEMATIC</span>
-            <span class="meta-tag">10 Vertices • 16 Walkways</span>
-            <span class="meta-tag">1:500 Topographic</span>
-          </div>
+    <!-- Right Interactive Map Area -->
+    <section class="map-stage">
 
-          <div class="map-controls">
-            <button type="button" class="btn-map-control" id="btn-zoom-in" title="Zoom In">+</button>
-            <button type="button" class="btn-map-control" id="btn-zoom-out" title="Zoom Out">−</button>
-            <button type="button" class="btn-map-control" id="btn-reset-view" title="Reset View">⟲</button>
-          </div>
+      <!-- Map Viewport Frame -->
+      <div class="map-container" id="viewport-map">
+        
+        <!-- Floating Map Controls -->
+        <div class="map-controls-panel">
+          <button type="button" class="map-btn" id="btn-zoom-in" title="Zoom in">+</button>
+          <button type="button" class="map-btn" id="btn-zoom-out" title="Zoom out">−</button>
+          <button type="button" class="map-btn" id="btn-reset-view" title="Reset view">⟲</button>
         </div>
 
         <!-- SVG Map Container -->
-        <div class="svg-map-wrapper" id="map-scroll-container">
+        <div class="svg-wrapper" id="map-scroll-container">
           <svg id="campus-svg" viewBox="0 0 1280 820" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <!-- Glowing Conduit Path Filters -->
-              <filter id="route-neon-glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="6" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-
-              <!-- Gradient for Active Shortest Path -->
-              <linearGradient id="active-path-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#38bdf8" />
-                <stop offset="50%" stop-color="#10b981" />
-                <stop offset="100%" stop-color="#38bdf8" />
-              </linearGradient>
-
-              <!-- Subtle Grid Background Pattern -->
-              <pattern id="campus-subgrid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.025)" stroke-width="1"/>
+              <!-- Clean subtle grid pattern -->
+              <pattern id="light-subgrid" width="32" height="32" patternUnits="userSpaceOnUse">
+                <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(0, 0, 0, 0.03)" stroke-width="1"/>
               </pattern>
             </defs>
 
-            <!-- Background Fill & Grid -->
-            <rect width="1280" height="820" fill="#070a14" />
-            <rect width="1280" height="820" fill="url(#campus-subgrid)" />
+            <!-- Light Background Canvas -->
+            <rect width="1280" height="820" fill="#fbfbfd" />
+            <rect width="1280" height="820" fill="url(#light-subgrid)" />
 
-            <!-- Landscape & Aesthetic Zones -->
+            <!-- Landscape & Zones -->
             <g id="campus-landscape"></g>
 
-            <!-- Static Walkway Conduits (|E| = 16) -->
+            <!-- Walkways (Edges) -->
             <g id="campus-pathways-group" class="pathways-layer"></g>
 
-            <!-- Dynamic Active Shortest Path Polyline -->
+            <!-- Active Shortest Path Highlighting -->
             <g id="active-route-layer">
-              <path id="route-path-glow" d="" fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0" filter="url(#route-neon-glow)" />
-              <path id="route-path-line" d="" fill="none" stroke="url(#active-path-gradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0" />
+              <path id="route-path-line" d="" fill="none" stroke="#0071e3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0" />
             </g>
 
-            <!-- Architectural Building Nodes (|V| = 10) -->
+            <!-- Landmark Cards (Nodes) -->
             <g id="campus-nodes-group" class="nodes-layer"></g>
           </svg>
 
-          <!-- Interactive Tooltip -->
+          <!-- Clean Hover Tooltip -->
           <div class="map-tooltip" id="map-tooltip">
             <div class="tooltip-badge" id="tooltip-category">CATEGORY</div>
             <div class="tooltip-title" id="tooltip-title">Location Name</div>
-            <div class="tooltip-desc" id="tooltip-desc">Building description and metadata.</div>
+            <div class="tooltip-desc" id="tooltip-desc">Description</div>
           </div>
         </div>
 
-        <!-- Map Footer Legend -->
-        <div class="map-footer-legend">
-          <div class="legend-chip">
-            <span class="legend-color-dot dot-cyan"></span>
-            <span>Origin (#A)</span>
+        <!-- Clean Map Legend Footer -->
+        <div class="map-legend">
+          <div class="legend-item">
+            <span class="legend-dot dot-origin"></span>
+            <span>Origin</span>
           </div>
-          <div class="legend-chip">
-            <span class="legend-color-dot dot-emerald"></span>
-            <span>Target (#B)</span>
+          <div class="legend-item">
+            <span class="legend-dot dot-dest"></span>
+            <span>Destination</span>
           </div>
-          <div class="legend-chip">
-            <span class="legend-color-dot dot-glow"></span>
-            <span>Dijkstra Shortest Route</span>
+          <div class="legend-item">
+            <span class="legend-line line-route"></span>
+            <span>Shortest Route</span>
           </div>
-          <div class="legend-chip">
-            <span class="legend-color-dot dot-walkway"></span>
-            <span>Walkway (Distance in Metres)</span>
+          <div class="legend-item">
+            <span class="legend-line line-walkway"></span>
+            <span>Walkway</span>
           </div>
         </div>
+
       </div>
 
-      <!-- Embedded Terminal CLI View Frame -->
-      <div class="terminal-viewport-frame" id="viewport-terminal" style="display: none;">
-        <div class="terminal-window-card">
-          <div class="terminal-header-bar">
-            <div class="mac-window-dots">
-              <span class="m-dot m-red"></span>
-              <span class="m-dot m-yellow"></span>
-              <span class="m-dot m-green"></span>
+      <!-- Terminal CLI Viewport Frame -->
+      <div class="terminal-container" id="viewport-terminal" style="display: none;">
+        <div class="terminal-card">
+          <div class="terminal-bar">
+            <div class="terminal-dots">
+              <span class="t-dot dot-red"></span>
+              <span class="t-dot dot-yellow"></span>
+              <span class="t-dot dot-green"></span>
             </div>
-            <span class="terminal-app-title">bash — campuspath@engine (port 8080)</span>
-            <button type="button" class="btn-copy-command" id="btn-copy-cli">Copy Command</button>
+            <span class="terminal-title">bash — ./campuspath</span>
+            <button type="button" class="btn-copy" id="btn-copy-cli">Copy Command</button>
           </div>
           
-          <div class="terminal-screen-output" id="terminal-body">
-            <pre><code><span class="t-prompt">$</span> ./campuspath <span class="t-yellow">"Main Gate"</span> <span class="t-yellow">"Central Library"</span>
-
-<span class="t-cyan">======================================================</span>
-<span class="t-bold">           OPTIMAL CAMPUS ROUTE (DIJKSTRA)            </span>
-<span class="t-cyan">======================================================</span>
-  Origin:      Main Gate [ID: 0]
-  Destination: Central Library [ID: 2]
-------------------------------------------------------
-  Total Distance: 450 metres
-  Total Stops:    3 landmarks
-  Search Time:    43.15 microseconds
-------------------------------------------------------
-  TURN-BY-TURN WAYFINDING:
-
-    <span class="t-green">[Start]</span>   Main Gate (Access &amp; Security)
-        |   + 250m (Walk along campus pathway)
-    <span class="t-yellow">[Hop 1]</span>   Admin Block (Administration)  [Cumulative: 250m]
-        |   + 200m (Walk along campus pathway)
-    <span class="t-green">[Arrive]</span>  Central Library (Academic Core)  [Cumulative: 450m]
-
-------------------------------------------------------
-  ADSA COMPLEXITY &amp; GUARANTEES:
-    - Algorithm:         Dijkstra's Single-Source Shortest Path
-    - Data Structure:    Adjacency List + Min-Heap Priority Queue
-    - Time Complexity:   O((V + E) log V)
-    - Space Complexity:  O(V + E)
-    - Optimality:        Mathematically proven shortest path
-<span class="t-cyan">======================================================</span></code></pre>
+          <div class="terminal-output" id="terminal-body">
+            <!-- Dynamic -->
           </div>
 
-          <div class="terminal-actions-footer">
-            <button type="button" class="btn-cli-action" id="btn-terminal-benchmark">Run 10,000-Query Benchmark</button>
-            <button type="button" class="btn-cli-action" id="btn-terminal-list-locations">List All Campus Nodes</button>
+          <div class="terminal-footer">
+            <button type="button" class="btn-cli" id="btn-terminal-benchmark">Run 10,000-Query Benchmark</button>
+            <button type="button" class="btn-cli" id="btn-terminal-list-locations">List All Campus Nodes</button>
           </div>
         </div>
       </div>
@@ -328,7 +266,7 @@
     </section>
   </main>
 
-  <!-- Notification Toast Container -->
+  <!-- Toast Notification -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts -->
