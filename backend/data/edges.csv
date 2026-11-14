@@ -15,3 +15,6 @@ source_id,destination_id,distance_meters
 6,1,170
 6,9,220
 1,9,160
+10,7,120
+10,2,140
+10,5,150

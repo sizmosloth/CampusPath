@@ -63,7 +63,10 @@
       
       <!-- Route Selection Card -->
       <section class="card route-card">
-        <h2 class="card-heading">Find Route</h2>
+        <div class="card-top-row">
+          <h2 class="card-heading">Find Route</h2>
+          <button type="button" class="btn-text-action" id="btn-toggle-stop">+ Add Stop</button>
+        </div>
 
         <form class="route-form" onsubmit="return false;">
           <!-- Origin -->
@@ -79,7 +82,23 @@
             </div>
           </div>
 
-          <!-- Swap Button -->
+          <!-- Intermediate Waypoint Stop (Optional) -->
+          <div class="field-group stop-field-group" id="stop-field-group" style="display: none;">
+            <div class="field-label-between">
+              <label for="stop-select" class="field-label">
+                <span class="dot-indicator dot-stop"></span>
+                <span>Via Stop</span>
+              </label>
+              <button type="button" class="btn-remove-stop" id="btn-remove-stop" title="Remove stop">×</button>
+            </div>
+            <div class="select-wrapper">
+              <select id="stop-select" aria-label="Intermediate stop location">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Swap Button Row -->
           <div class="swap-divider">
             <button type="button" class="btn-swap" id="btn-swap-locations" title="Swap locations">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -117,12 +136,12 @@
 
         <!-- Quick Suggestions -->
         <div class="quick-presets">
-          <span class="presets-title">Quick Shortcuts</span>
+          <span class="presets-title">Popular Routes</span>
           <div class="preset-pills">
             <button type="button" class="pill-btn" data-src="main-gate" data-dst="library">Gate → Library</button>
+            <button type="button" class="pill-btn pill-highlight" data-src="main-gate" data-stop="stationery" data-dst="library">Gate → Stationery → Library</button>
             <button type="button" class="pill-btn" data-src="academic-block" data-dst="cs-block">Academic → CS</button>
             <button type="button" class="pill-btn" data-src="hostel" data-dst="canteen">Hostel → Canteen</button>
-            <button type="button" class="pill-btn" data-src="parking-area" data-dst="auditorium">Parking → Auditorium</button>
           </div>
         </div>
       </section>
@@ -131,7 +150,7 @@
       <section class="card details-card" id="details-card">
         <div class="details-header">
           <h3 class="card-heading">Shortest Route</h3>
-          <span class="badge-dijkstra">Dijkstra Optimal</span>
+          <span class="badge-dijkstra" id="route-badge-text">Dijkstra Optimal</span>
         </div>
 
         <div class="metrics-row">
@@ -148,7 +167,7 @@
         <!-- Visited Order (Clean minimal pills) -->
         <div class="visited-section">
           <div class="visited-header">
-            <span>Algorithm Visited Order</span>
+            <span>Algorithm Visited Sequence</span>
             <span class="visited-time" id="queue-latency-badge">45 µs</span>
           </div>
           <div class="visited-pills" id="queue-visited-pills">
@@ -184,7 +203,6 @@
         <div class="svg-wrapper" id="map-scroll-container">
           <svg id="campus-svg" viewBox="0 0 1280 820" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <!-- Clean subtle grid pattern -->
               <pattern id="light-subgrid" width="32" height="32" patternUnits="userSpaceOnUse">
                 <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(0, 0, 0, 0.03)" stroke-width="1"/>
               </pattern>
@@ -202,7 +220,7 @@
 
             <!-- Active Shortest Path Highlighting -->
             <g id="active-route-layer">
-              <path id="route-path-line" d="" fill="none" stroke="#0071e3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0" />
+              <path id="route-path-line" d="" fill="none" stroke="#0071e3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0" class="animated-route-path" />
             </g>
 
             <!-- Landmark Cards (Nodes) -->
@@ -224,6 +242,10 @@
             <span>Origin</span>
           </div>
           <div class="legend-item">
+            <span class="legend-dot dot-stop"></span>
+            <span>Stop (Via)</span>
+          </div>
+          <div class="legend-item">
             <span class="legend-dot dot-dest"></span>
             <span>Destination</span>
           </div>
@@ -239,7 +261,7 @@
 
       </div>
 
-      <!-- Terminal CLI Viewport Frame -->
+      <!-- Terminal CLI Viewport Frame (Real Interactive Terminal) -->
       <div class="terminal-container" id="viewport-terminal" style="display: none;">
         <div class="terminal-card">
           <div class="terminal-bar">
@@ -248,17 +270,28 @@
               <span class="t-dot dot-yellow"></span>
               <span class="t-dot dot-green"></span>
             </div>
-            <span class="terminal-title">bash — ./campuspath</span>
+            <span class="terminal-title">bash — interactive campuspath engine</span>
             <button type="button" class="btn-copy" id="btn-copy-cli">Copy Command</button>
           </div>
           
           <div class="terminal-output" id="terminal-body">
-            <!-- Dynamic -->
+            <!-- Dynamic Shell Screen -->
           </div>
 
+          <!-- Interactive Command Prompt Line -->
+          <form class="terminal-input-bar" id="cli-form" onsubmit="return false;">
+            <span class="terminal-prompt-glyph">campuspath&gt;</span>
+            <input type="text" id="cli-input" class="terminal-cli-input" placeholder="Type a command (e.g. route 'Main Gate' 'Stationery' 'Library')..." autocomplete="off" spellcheck="false">
+            <button type="submit" class="terminal-run-btn" id="cli-run-btn">Execute</button>
+          </form>
+
           <div class="terminal-footer">
-            <button type="button" class="btn-cli" id="btn-terminal-benchmark">Run 10,000-Query Benchmark</button>
-            <button type="button" class="btn-cli" id="btn-terminal-list-locations">List All Campus Nodes</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="route 'Main Gate' 'Library'">Gate → Library</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="route 'Main Gate' 'Stationery' 'Library'">Gate → Stationery → Library</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="benchmark">Benchmark (10,000)</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="locations">Landmarks</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="help">Help</button>
+            <button type="button" class="btn-cli-cmd" data-cmd="clear">Clear</button>
           </div>
         </div>
       </div>

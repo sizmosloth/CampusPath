@@ -57,8 +57,8 @@ int main() {
     std::cout << "--- Test Group 1: Loading Real Campus Dataset ---\n";
     bool loadOk = campusMap.loadFromCSV(validNodesPath, validEdgesPath);
     TEST_ASSERT(loadOk, "Successfully loaded valid nodes.csv and edges.csv");
-    TEST_ASSERT(campusMap.getNodeCount() == 10, "Loaded exactly 10 campus locations");
-    TEST_ASSERT(campusMap.getEdgeCount() == 16, "Loaded exactly 16 undirected walking connections");
+    TEST_ASSERT(campusMap.getNodeCount() == 11, "Loaded exactly 11 campus locations");
+    TEST_ASSERT(campusMap.getEdgeCount() == 19, "Loaded exactly 19 undirected walking connections");
 
     // ----------------------------------------------------
     // TEST 3 & 4: Location Names and Categories
@@ -83,6 +83,10 @@ int main() {
     const auto* node7 = campusMap.getNodeById(7);
     TEST_ASSERT(node7 != nullptr && node7->name == "Admin Block" && node7->category == "Administration",
                 "Node 7: 'Admin Block', Category: 'Administration'");
+
+    const auto* node10 = campusMap.getNodeById(10);
+    TEST_ASSERT(node10 != nullptr && node10->name == "Stationery" && node10->category == "Store",
+                "Node 10: 'Stationery', Category: 'Store'");
 
     // ----------------------------------------------------
     // TEST 5 & 6: Lookup by Valid ID and Name

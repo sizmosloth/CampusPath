@@ -155,11 +155,25 @@
       accentColor: '#34c759', // Apple Green
       sub: 'Running Track & Turf Pitch',
       description: 'Synthetic running track, full grass soccer pitch, and tennis courts.'
+    },
+    {
+      id: 'stationery',
+      backendId: 10,
+      name: 'Stationery Shop',
+      x: 420,
+      y: 375,
+      width: 176,
+      height: 72,
+      category: 'Store & Books',
+      code: 'ST',
+      accentColor: '#ff9500', // Apple Orange
+      sub: 'Books, Supplies & Print',
+      description: 'Campus bookstore, stationery supplies, photocopying and academic materials.'
     }
   ];
 
   /**
-   * 16 Official Walkways with Exact Distances (|E| = 16)
+   * 19 Official Walkways with Exact Distances (|E| = 19)
    */
   const CAMPUS_PATHWAYS = [
     { from: 'main-gate', to: 'admin-block', distance: 250 },
@@ -177,7 +191,10 @@
     { from: 'hostel', to: 'sports-ground', distance: 180 },
     { from: 'academic-block', to: 'cs-block', distance: 170 },
     { from: 'academic-block', to: 'sports-ground', distance: 220 },
-    { from: 'cs-block', to: 'sports-ground', distance: 160 }
+    { from: 'cs-block', to: 'sports-ground', distance: 160 },
+    { from: 'stationery', to: 'admin-block', distance: 120 },
+    { from: 'stationery', to: 'library', distance: 140 },
+    { from: 'stationery', to: 'auditorium', distance: 150 }
   ];
 
   // Lookup Indexes
@@ -369,7 +386,7 @@
   // 5. Route Highlighting & Dynamic Path Drawing
   // =========================================================================
 
-  function highlightRoute(orderedIds) {
+  function highlightRoute(orderedIds, stopNodeId) {
     clearRoute();
 
     if (!orderedIds || !Array.isArray(orderedIds) || orderedIds.length < 2) {
@@ -419,7 +436,9 @@
 
       nodeEl.classList.add('is-route-node');
 
-      if (idx === 0) {
+      if (stopNodeId && n.id === stopNodeId) {
+        nodeEl.classList.add('is-stop-node');
+      } else if (idx === 0) {
         nodeEl.classList.add('is-source-node');
       } else if (idx === resolved.length - 1) {
         nodeEl.classList.add('is-dest-node');
@@ -437,7 +456,7 @@
 
     document.querySelectorAll('.walkway-segment.is-active').forEach(s => s.classList.remove('is-active'));
     document.querySelectorAll('.campus-node-card').forEach(n => {
-      n.classList.remove('is-route-node', 'is-source-node', 'is-dest-node', 'is-waypoint-node', 'is-exploring');
+      n.classList.remove('is-route-node', 'is-source-node', 'is-dest-node', 'is-waypoint-node', 'is-stop-node', 'is-exploring');
     });
   }
 

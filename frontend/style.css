@@ -221,6 +221,34 @@ button, input, select {
   margin-bottom: 12px;
 }
 
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.card-top-row .card-heading {
+  margin-bottom: 0;
+}
+
+.btn-text-action {
+  background: none;
+  border: none;
+  color: var(--color-blue);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-text-action:hover {
+  background: var(--color-blue-subtle);
+  color: var(--color-blue-hover);
+}
+
 /* Route Form Inputs */
 .route-form {
   display: flex;
@@ -250,7 +278,32 @@ button, input, select {
 }
 
 .dot-start { background: var(--color-blue); }
+.dot-stop { background: var(--color-orange); }
 .dot-end { background: var(--color-green); }
+
+.field-label-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-remove-stop {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-remove-stop:hover {
+  color: var(--color-red);
+  background: rgba(255, 59, 48, 0.08);
+}
 
 .select-wrapper {
   position: relative;
@@ -393,6 +446,18 @@ button, input, select {
 .pill-btn:hover {
   background: #ebebeb;
   color: var(--text-primary);
+}
+
+.pill-btn.pill-highlight {
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.28);
+  color: #c05e00;
+  font-weight: 600;
+}
+
+.pill-btn.pill-highlight:hover {
+  background: rgba(255, 149, 0, 0.18);
+  color: #a84e00;
 }
 
 /* Route Details Card */
@@ -858,6 +923,30 @@ button, input, select {
   stroke-width: 1.8;
 }
 
+.campus-node-card.is-stop-node .node-chassis {
+  stroke: var(--color-orange);
+  stroke-width: 2.4;
+  fill: #fffaf0;
+}
+
+.campus-node-card.is-stop-node .node-accent-bar {
+  fill: var(--color-orange) !important;
+}
+
+.animated-route-path {
+  stroke-dasharray: 10 6;
+  animation: routePathFlow 1.2s linear infinite;
+}
+
+@keyframes routePathFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
 .campus-node-card.is-exploring .node-chassis {
   stroke: var(--color-orange);
   stroke-width: 2.5;
@@ -999,13 +1088,85 @@ button, input, select {
 .t-orange { color: #ff9f0a; font-weight: 600; }
 .t-bold { color: #ffffff; font-weight: 600; }
 
-.terminal-footer {
+/* Interactive Terminal Input Bar */
+.terminal-input-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
+  background: #19191b;
+  border-top: 1px solid #333336;
+}
+
+.terminal-prompt-glyph {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: #34c759;
+  user-select: none;
+}
+
+.terminal-cli-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.terminal-cli-input::placeholder {
+  color: #636366;
+}
+
+.terminal-run-btn {
+  padding: 6px 14px;
+  background: var(--color-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.terminal-run-btn:hover {
+  background: var(--color-blue-hover);
+}
+
+.terminal-run-btn:active {
+  transform: scale(0.97);
+}
+
+.terminal-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
   background: #252528;
   border-top: 1px solid #38383a;
+  overflow-x: auto;
+}
+
+.btn-cli-cmd {
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: #d1d1d6;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-cli-cmd:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 .btn-cli {

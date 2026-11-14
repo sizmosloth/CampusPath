@@ -297,6 +297,88 @@ void printRouteResult(const CampusPath::CampusMap& campusMap, int sourceId, int 
     std::cout << "======================================================\n";
 }
 
+void printRouteResultWithStop(const CampusPath::CampusMap& campusMap, int sourceId, int viaId, int destId) {
+    const auto* sourceNode = campusMap.getNodeById(sourceId);
+    const auto* viaNode = campusMap.getNodeById(viaId);
+    const auto* destNode = campusMap.getNodeById(destId);
+
+    if (sourceNode == nullptr || viaNode == nullptr || destNode == nullptr) {
+        std::cerr << "Error: Invalid source, stop, or destination ID.\n";
+        return;
+    }
+
+    std::cout << "\n======================================================\n";
+    std::cout << "      OPTIMAL CAMPUS ROUTE VIA STOP (DIJKSTRA)        \n";
+    std::cout << "======================================================\n";
+    std::cout << "  Origin:      " << sourceNode->name << " [ID: " << sourceId << "]\n";
+    std::cout << "  Stop (Via):  " << viaNode->name << " [ID: " << viaId << "]\n";
+    std::cout << "  Destination: " << destNode->name << " [ID: " << destId << "]\n";
+    std::cout << "------------------------------------------------------\n";
+
+    auto startClock = std::chrono::high_resolution_clock::now();
+    CampusPath::PathResult leg1 = CampusPath::Dijkstra::findShortestPath(campusMap.getGraph(), sourceId, viaId);
+    CampusPath::PathResult leg2 = CampusPath::Dijkstra::findShortestPath(campusMap.getGraph(), viaId, destId);
+    auto endClock = std::chrono::high_resolution_clock::now();
+    double elapsedMicroseconds = std::chrono::duration<double, std::micro>(endClock - startClock).count();
+
+    if (!leg1.found || !leg2.found) {
+        std::cout << "  Status:  NO PATH FOUND (One or more segments disconnected)\n";
+        std::cout << "======================================================\n";
+        return;
+    }
+
+    std::vector<int> mergedPath = leg1.path;
+    if (!mergedPath.empty() && !leg2.path.empty()) {
+        mergedPath.pop_back();
+    }
+    mergedPath.insert(mergedPath.end(), leg2.path.begin(), leg2.path.end());
+
+    double totalDist = leg1.totalDistance + leg2.totalDistance;
+    std::cout << "  Total Distance: " << static_cast<int>(totalDist) << " metres\n";
+    std::cout << "  Total Stops:    " << mergedPath.size() << " landmarks (Includes Stop)\n";
+    std::cout << "  Search Time:    " << std::fixed << std::setprecision(2) << elapsedMicroseconds << " microseconds\n";
+    std::cout << "------------------------------------------------------\n";
+    std::cout << "  TURN-BY-TURN WAYFINDING:\n\n";
+
+    double runningDist = 0.0;
+    for (size_t i = 0; i < mergedPath.size(); ++i) {
+        int u = mergedPath[i];
+        const auto* node = campusMap.getNodeById(u);
+        std::string name = (node != nullptr) ? node->name : "Node " + std::to_string(u);
+        std::string cat = (node != nullptr) ? node->category : "";
+
+        if (i == 0) {
+            std::cout << "    [Start]   " << name << " (" << cat << ")\n";
+        } else {
+            int prev = mergedPath[i - 1];
+            double leg = 0.0;
+            for (const auto& edge : campusMap.getGraph().getNeighbors(prev)) {
+                if (edge.destination == u) {
+                    leg = edge.distance;
+                    break;
+                }
+            }
+            runningDist += leg;
+            std::cout << "        |   + " << static_cast<int>(leg) << "m (Walk along campus pathway)\n";
+            if (u == viaId && i != mergedPath.size() - 1) {
+                std::cout << "    [STOP]    " << name << " (" << cat << ")  [Cumulative: " << static_cast<int>(runningDist) << "m]\n";
+            } else if (i == mergedPath.size() - 1) {
+                std::cout << "    [Arrive]  " << name << " (" << cat << ")  [Cumulative: " << static_cast<int>(runningDist) << "m]\n";
+            } else {
+                std::cout << "    [Hop " << i << "]   " << name << " (" << cat << ")  [Cumulative: " << static_cast<int>(runningDist) << "m]\n";
+            }
+        }
+    }
+
+    std::cout << "\n------------------------------------------------------\n";
+    std::cout << "  ADSA COMPLEXITY & GUARANTEES:\n";
+    std::cout << "    - Algorithm:         Multi-Waypoint Dijkstra's Shortest Path\n";
+    std::cout << "    - Time Complexity:   O((V + E) log V)\n";
+    std::cout << "    - Space Complexity:  O(V + E)\n";
+    std::cout << "    - Optimality:        Mathematically proven shortest path via stop\n";
+    std::cout << "======================================================\n";
+}
+
 // Feature 3: Interactive Route Query
 void findShortestRoute(const CampusPath::CampusMap& campusMap) {
     viewLocations(campusMap);
@@ -413,7 +495,30 @@ int main(int argc, char* argv[]) {
 
         if (arg1 == "-i" || arg1 == "--interactive") {
             // Proceed to interactive loop below
-        } else if (argc >= 3) {
+        } else if (argc >= 4) {
+            std::string srcStr = argv[1];
+            std::string viaStr = argv[2];
+            std::string dstStr = argv[3];
+            int srcId = resolveNode(campusMap, srcStr);
+            int viaId = resolveNode(campusMap, viaStr);
+            int dstId = resolveNode(campusMap, dstStr);
+
+            if (srcId == -1) {
+                std::cerr << "Error: Could not identify source location: '" << srcStr << "'.\n";
+                return 1;
+            }
+            if (viaId == -1) {
+                std::cerr << "Error: Could not identify stop location: '" << viaStr << "'.\n";
+                return 1;
+            }
+            if (dstId == -1) {
+                std::cerr << "Error: Could not identify destination location: '" << dstStr << "'.\n";
+                return 1;
+            }
+
+            printRouteResultWithStop(campusMap, srcId, viaId, dstId);
+            return 0;
+        } else if (argc == 3) {
             std::string srcStr = argv[1];
             std::string dstStr = argv[2];
             int srcId = resolveNode(campusMap, srcStr);
